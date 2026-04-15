@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class IndexDataService {
+
   private final IndexDataRepository indexDataRepository;
 
   @Transient

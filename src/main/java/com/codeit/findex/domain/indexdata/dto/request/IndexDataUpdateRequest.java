@@ -4,7 +4,7 @@ import com.codeit.findex.domain.common.enums.SourceType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public record IndexDataUpdateRequest (
+public record IndexDataUpdateRequest(
     SourceType sourceType,
     BigDecimal marketPrice,
     BigDecimal closingPrice,

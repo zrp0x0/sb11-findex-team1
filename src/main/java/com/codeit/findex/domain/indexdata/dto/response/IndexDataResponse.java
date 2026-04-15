@@ -5,7 +5,7 @@ import com.codeit.findex.domain.indexdata.entity.IndexData;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public record IndexDataResponse (
+public record IndexDataResponse(
     Long id,
     Long indexInfoId,
     LocalDate baseDate,
@@ -20,6 +20,7 @@ public record IndexDataResponse (
     Long tradingPrice,
     Long marketTotalAmount
 ) {
+
   public static IndexDataResponse from(IndexData indexData) {
     return new IndexDataResponse(
         indexData.getId(),
