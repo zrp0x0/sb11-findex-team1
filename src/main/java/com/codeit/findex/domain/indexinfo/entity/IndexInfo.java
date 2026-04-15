@@ -88,4 +88,23 @@ public class IndexInfo {
                 favorite
         );
     }
+
+    public static IndexInfo createByUser(
+            String indexClassification,
+            String indexName,
+            Integer employedItemsCount,
+            LocalDate basePointInTime,
+            BigDecimal baseIndex,
+            Boolean favorite
+    ) {
+        return new IndexInfo(
+                indexClassification,
+                indexName,
+                employedItemsCount,
+                basePointInTime,
+                baseIndex,
+                SourceType.USER,
+                favorite
+        );
+    }
 }
