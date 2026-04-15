@@ -17,13 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class IndexInfoController {
 
-    private final IndexInfoService indexInfoService;
+  private final IndexInfoService indexInfoService;
 
-    @PostMapping
-    public ResponseEntity<IndexInfoCreateResponse> createIndexInfo(
-            @Valid @RequestBody IndexInfoCreateRequest request
-    ) {
-        IndexInfoCreateResponse response = indexInfoService.createIndexInfo(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
+  @PostMapping
+  public ResponseEntity<IndexInfoCreateResponse> createIndexInfo(
+      @Valid @RequestBody IndexInfoCreateRequest request) {
+    IndexInfoCreateResponse response = indexInfoService.createIndexInfo(request);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
 }
