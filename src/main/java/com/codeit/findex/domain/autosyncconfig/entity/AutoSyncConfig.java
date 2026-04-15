@@ -13,24 +13,24 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class AutoSyncConfig {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    // 1:1 관계. 대상 지수는 유일해야 하므로 unique = true
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "index_info_id", nullable = false, unique = true)
-    private IndexInfo indexInfo;
+  // 1:1 관계. 대상 지수는 유일해야 하므로 unique = true
+  @OneToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "index_info_id", nullable = false, unique = true)
+  private IndexInfo indexInfo;
 
-    @Column(nullable = false)
-    private Boolean enabled = false;
+  @Column(nullable = false)
+  private Boolean enabled = false;
 
-    public AutoSyncConfig(IndexInfo indexInfo, Boolean enabled) {
-        this.indexInfo = indexInfo;
-        this.enabled = enabled != null ? enabled : false;
-    }
+  public AutoSyncConfig(IndexInfo indexInfo, Boolean enabled) {
+    this.indexInfo = indexInfo;
+    this.enabled = enabled != null ? enabled : false;
+  }
 
-    public static AutoSyncConfig create(IndexInfo indexInfo, Boolean enabled) {
-        return new AutoSyncConfig(indexInfo, enabled);
-    }
+  public static AutoSyncConfig create(IndexInfo indexInfo, Boolean enabled) {
+    return new AutoSyncConfig(indexInfo, enabled);
+  }
 }
