@@ -20,10 +20,13 @@ public class AutoSyncConfigService {
   }
 
   public AutoSyncConfigPageResponse getAutoSyncConfigs(AutoSyncConfigListRequest request) {
-    // 인덱스 ID와 활성화 여부가 조회조건이어서 if-else로 분기
     Long indexInfoId = request.indexInfoId();
     Boolean enabled = request.enabled();
-    Sort sort = createSort(request);
+
+    Sort sort = createSort(request); // 정렬 조건
+
+    Integer requestSize = request.size();
+    int size = (requestSize == null || requestSize <= 0) ? 10 : requestSize;
 
     List<AutoSyncConfig> autoSyncConfigs;
 
@@ -38,21 +41,45 @@ public class AutoSyncConfigService {
           sort);
     }
 
-    List<AutoSyncConfigResponse> content = autoSyncConfigs.stream()
+    List<AutoSyncConfig> filteredItems = autoSyncConfigs.stream()
+        .filter(config -> isAfterCursor(config, request))
+        .toList(); // 커서 이후 필터링
+
+    boolean hasNext = filteredItems.size() > size;
+
+    List<AutoSyncConfig> pageItems = filteredItems.stream()
+        .limit(size)
+        .toList(); // 항목 추출
+
+    List<AutoSyncConfigResponse> content = pageItems.stream()
         .map(this::toResponse)
         .toList();
 
-    return new AutoSyncConfigPageResponse( // 최종 응답 목록 반환
+    String nextCursor = null;
+    Long nextIdAfter = null;
+
+    // 다음 페이지 커서 계산
+    if (hasNext && !pageItems.isEmpty()) {
+      AutoSyncConfig lastItem = pageItems.get(pageItems.size() - 1);
+      nextIdAfter = lastItem.getId();
+
+      if ("enabled".equals(request.sortField())) {
+        nextCursor = String.valueOf(lastItem.getEnabled());
+      } else {
+        nextCursor = lastItem.getIndexInfo().getIndexName();
+      }
+    }
+
+    return new AutoSyncConfigPageResponse(
         content,
-        null,
-        null,
+        nextCursor,
+        nextIdAfter,
         content.size(),
-        (long) content.size(),
-        false
+        (long) filteredItems.size(),
+        hasNext
     );
   }
 
-  // 개별 데이터 DTO 변환
   private AutoSyncConfigResponse toResponse(AutoSyncConfig autoSyncConfig) {
     return new AutoSyncConfigResponse(
         autoSyncConfig.getId(),
@@ -63,7 +90,6 @@ public class AutoSyncConfigService {
     );
   }
 
-  // 2가지 조건이라 if-else로 정렬
   private Sort createSort(AutoSyncConfigListRequest request) {
     String sortField = request.sortField();
     String sortDirection = request.sortDirection();
@@ -83,5 +109,28 @@ public class AutoSyncConfigService {
     }
 
     return Sort.by(direction, sortBy);
+  }
+
+  private boolean isAfterCursor(AutoSyncConfig config, AutoSyncConfigListRequest request) {
+    String cursor = request.cursor();
+    Long idAfter = request.idAfter();
+    String sortDirection = request.sortDirection();
+
+    if (cursor == null || idAfter == null) {
+      return true;
+    }
+
+    int compare;
+    if ("enabled".equals(request.sortField())) {
+      compare = config.getEnabled().compareTo(Boolean.valueOf(cursor));
+    } else {
+      compare = config.getIndexInfo().getIndexName().compareTo(cursor);
+    }
+
+    if ("desc".equalsIgnoreCase(sortDirection)) {
+      return compare < 0 || (compare == 0 && config.getId() > idAfter);
+    }
+
+    return compare > 0 || (compare == 0 && config.getId() > idAfter);
   }
 }
