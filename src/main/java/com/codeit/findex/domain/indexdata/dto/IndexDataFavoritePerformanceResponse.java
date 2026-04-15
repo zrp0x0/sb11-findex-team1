@@ -3,7 +3,7 @@ package com.codeit.findex.domain.indexdata.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public record FavoritePerformanceResponse(
+public record IndexDataFavoritePerformanceResponse(
     // index_info
     Long id,
     String indexClassification,
