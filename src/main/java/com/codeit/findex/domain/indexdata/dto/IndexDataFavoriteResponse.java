@@ -3,13 +3,13 @@ package com.codeit.findex.domain.indexdata.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public record IndexDataFavoritePerformanceResponse(
-    // index_info
-    Long id,
+public record IndexDataFavoriteResponse(
+    // indexInfo
+    Long indexId,
     String indexClassification,
     String indexName,
 
-    // index_data -
+    // indexData
     LocalDate baseDate,
     BigDecimal closingPrice,
     BigDecimal versus,
