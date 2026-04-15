@@ -2,21 +2,14 @@ package com.codeit.findex.domain.indexinfo.service;
 
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoCreateRequest;
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoCreateResponse;
-import com.codeit.findex.domain.indexinfo.entity.IndexInfo;
-import com.codeit.findex.domain.indexinfo.repository.IndexInfoRepository;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
-
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @Transactional
