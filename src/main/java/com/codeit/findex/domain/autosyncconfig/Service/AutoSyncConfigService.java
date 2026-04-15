@@ -19,14 +19,27 @@ public class AutoSyncConfigService {
     }
 
     public AutoSyncConfigPageResponse getAutoSyncConfigs(AutoSyncConfigListRequest request) {
-        List<AutoSyncConfig> autoSyncConfigs = autoSyncConfigRepository.findAll();
+        // 인덱스 ID와 활성화 여부가 조건, 이후 분기
+        Long indexInfoId = request.indexInfoId();
+        Boolean enabled = request.enabled();
+
+        List<AutoSyncConfig> autoSyncConfigs;
+
+        if (indexInfoId == null && enabled == null) {
+            autoSyncConfigs = autoSyncConfigRepository.findAll();
+        } else if (indexInfoId != null && enabled == null) {
+            autoSyncConfigs = autoSyncConfigRepository.findByIndexInfo_Id(indexInfoId);
+        } else if (indexInfoId == null) {
+            autoSyncConfigs = autoSyncConfigRepository.findByEnabled(enabled);
+        } else {
+            autoSyncConfigs = autoSyncConfigRepository.findByIndexInfo_IdAndEnabled(indexInfoId, enabled);
+        }
 
         List<AutoSyncConfigResponse> content = autoSyncConfigs.stream()
                 .map(this::toResponse)
                 .toList();
 
-        //페이지네이션 구현 이전 임시 응답 양식
-        return new AutoSyncConfigPageResponse(
+        return new AutoSyncConfigPageResponse( // 최종 응답 목록 반환
                 content,
                 null,
                 null,
@@ -35,7 +48,7 @@ public class AutoSyncConfigService {
                 false
         );
     }
-
+    // 개별 데이터 DTO 변환
     private AutoSyncConfigResponse toResponse(AutoSyncConfig autoSyncConfig) {
         return new AutoSyncConfigResponse(
                 autoSyncConfig.getId(),
