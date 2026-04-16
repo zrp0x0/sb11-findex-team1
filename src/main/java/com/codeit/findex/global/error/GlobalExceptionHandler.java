@@ -1,5 +1,6 @@
 package com.codeit.findex.global.error;
 
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -18,6 +19,17 @@ public class GlobalExceptionHandler {
             .build();
 
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+  }
+
+  @ExceptionHandler(EntityNotFoundException.class)
+  public ResponseEntity<ErrorResponse> handlerEntityNotFoundException(EntityNotFoundException e) {
+    ErrorResponse response = ErrorResponse.builder()
+        .status(HttpStatus.NOT_FOUND.value())
+        .message("데이터를 찾을 수 없습니다.")
+        .details(e.getMessage())
+        .build();
+
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
   }
 
   @ExceptionHandler(Exception.class)
