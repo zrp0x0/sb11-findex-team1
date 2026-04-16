@@ -1,6 +1,7 @@
 package com.codeit.findex.domain.autosyncconfig.service;
 
 import com.codeit.findex.domain.autosyncconfig.dto.AutoSyncConfigListRequest;
+import com.codeit.findex.domain.autosyncconfig.dto.AutoSyncConfigMapper;
 import com.codeit.findex.domain.autosyncconfig.dto.AutoSyncConfigPageResponse;
 import com.codeit.findex.domain.autosyncconfig.dto.AutoSyncConfigResponse;
 import com.codeit.findex.domain.autosyncconfig.dto.AutoSyncConfigUpdateRequest;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AutoSyncConfigService {
 
   private final AutoSyncConfigRepository autoSyncConfigRepository;
+  private final AutoSyncConfigMapper autoSyncConfigMapper;
 
   public AutoSyncConfigPageResponse getAutoSyncConfigs(AutoSyncConfigListRequest request) {
     Long indexInfoId = request.indexInfoId();
@@ -52,7 +54,7 @@ public class AutoSyncConfigService {
         .toList();
 
     List<AutoSyncConfigResponse> content = pageItems.stream()
-        .map(this::toAutoSyncConfigResponse)
+        .map(autoSyncConfigMapper::toAutoSyncConfigResponse)
         .toList();
 
     String nextCursor = null;
@@ -75,16 +77,6 @@ public class AutoSyncConfigService {
         content.size(),
         (long) filteredItems.size(),
         hasNext
-    );
-  }
-
-  private AutoSyncConfigResponse toAutoSyncConfigResponse(AutoSyncConfig autoSyncConfig) {
-    return new AutoSyncConfigResponse(
-        autoSyncConfig.getId(),
-        autoSyncConfig.getIndexInfo().getId(),
-        autoSyncConfig.getIndexInfo().getIndexClassification(),
-        autoSyncConfig.getIndexInfo().getIndexName(),
-        autoSyncConfig.getEnabled()
     );
   }
 
@@ -138,6 +130,6 @@ public class AutoSyncConfigService {
         .orElseThrow(() -> new EntityNotFoundException("자동 연동 설정을 찾을 수 없습니다."));
 
     autoSyncConfig.updateEnabled(request.enabled());
-    return toAutoSyncConfigResponse(autoSyncConfig);
+    return autoSyncConfigMapper.toAutoSyncConfigResponse(autoSyncConfig);
   }
 }
