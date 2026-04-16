@@ -17,9 +17,9 @@ import java.util.List;
 @Table(
     name = "index_info",
     uniqueConstraints = {
-      @UniqueConstraint(
-          name = "uk_index_classification_name",
-          columnNames = {"index_classification", "index_name"})
+        @UniqueConstraint(
+            name = "uk_index_classification_name",
+            columnNames = {"index_classification", "index_name"})
     })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
