@@ -63,7 +63,7 @@ public class IndexDataService {
       BigDecimal versus = currentPrice.subtract(beforePrice);
 
       // 등락률 계산 - (현재가 - 이전가) / 이전가 * 100
-      BigDecimal fluctuationRate = BigDecimal.ZERO;
+      BigDecimal fluctuationRate = null;
       if (beforePrice.compareTo(BigDecimal.ZERO) != 0) {
         fluctuationRate =
             versus
@@ -71,7 +71,6 @@ public class IndexDataService {
                 .multiply(BigDecimal.valueOf(100))
                 .setScale(2, RoundingMode.HALF_UP);
       }
-
       responses.add(
           indexDataMapper.toIndexDataFavoriteResponse(
               latest, versus, fluctuationRate, currentPrice, beforePrice));
@@ -103,8 +102,10 @@ public class IndexDataService {
 
   @Transactional
   public IndexDataResponse update(Long id, IndexDataUpdateRequest request) {
-    IndexData indexData = indexDataRepository.findById(id)
-        .orElseThrow(() -> new IllegalArgumentException("해당 지수 데이터가 없습니다. id=" + id));
+    IndexData indexData =
+        indexDataRepository
+            .findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("해당 지수 데이터가 없습니다. id=" + id));
 
     indexData.update(
         request.sourceType(),
@@ -116,8 +117,7 @@ public class IndexDataService {
         request.fluctuationRate(),
         request.tradingQuantity(),
         request.tradingPrice(),
-        request.marketTotalAmount()
-    );
+        request.marketTotalAmount());
     return IndexDataResponse.from(indexData);
   }
 }
