@@ -1,8 +1,9 @@
 package com.codeit.findex.domain.indexinfo.service;
 
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoCreateRequest;
-import com.codeit.findex.domain.indexinfo.dto.IndexInfoCreateResponse;
+import com.codeit.findex.domain.indexinfo.dto.IndexInfoResponse;
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoMapper;
+import com.codeit.findex.domain.indexinfo.dto.IndexInfoUpdateRequest;
 import com.codeit.findex.domain.indexinfo.entity.IndexInfo;
 import com.codeit.findex.domain.indexinfo.repository.IndexInfoRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -19,7 +20,7 @@ public class IndexInfoService {
   private final IndexInfoMapper indexInfoMapper;
 
   @Transactional
-  public IndexInfoCreateResponse createIndexInfo(IndexInfoCreateRequest request) {
+  public IndexInfoResponse createIndexInfo(IndexInfoCreateRequest request) {
 
     // 1. 중복 검증 로직
     if (indexInfoRepository.existsByIndexClassificationAndIndexName(
@@ -41,6 +42,16 @@ public class IndexInfoService {
     IndexInfo savedIndexInfo = indexInfoRepository.save(newIndexInfo);
 
     return indexInfoMapper.toIndexInfoCreateResponse(savedIndexInfo);
+  }
+
+  @Transactional
+  public IndexInfoResponse updateIndexInfo(Long id, IndexInfoUpdateRequest request) {
+    IndexInfo indexInfo = indexInfoRepository.findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("지수 정보를 찾을 수 없습니다 ID: " + id));
+
+    indexInfo.update(request.employedItemsCount(), request.basePointInTime(), request.baseIndex(), request.favorite());
+
+    return indexInfoMapper.toIndexInfoCreateResponse(indexInfo);
   }
 
   @Transactional

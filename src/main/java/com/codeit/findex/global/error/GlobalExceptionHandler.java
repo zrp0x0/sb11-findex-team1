@@ -3,6 +3,7 @@ package com.codeit.findex.global.error;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -23,11 +24,12 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(EntityNotFoundException.class)
   public ResponseEntity<ErrorResponse> handlerEntityNotFoundException(EntityNotFoundException e) {
-    ErrorResponse response = ErrorResponse.builder()
-        .status(HttpStatus.NOT_FOUND.value())
-        .message("데이터를 찾을 수 없습니다.")
-        .details(e.getMessage())
-        .build();
+    ErrorResponse response =
+        ErrorResponse.builder()
+            .status(HttpStatus.NOT_FOUND.value())
+            .message("데이터를 찾을 수 없습니다.")
+            .details(e.getMessage())
+            .build();
 
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
   }
@@ -42,5 +44,24 @@ public class GlobalExceptionHandler {
             .build();
 
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+  }
+
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ResponseEntity<ErrorResponse> handlerMethodArgumentNotValidException(
+      MethodArgumentNotValidException e) {
+    String details =
+        e.getBindingResult().getFieldErrors().stream()
+            .findFirst()
+            .map(error -> error.getField() + ": " + error.getDefaultMessage())
+            .orElse("요청값이 올바르지 않습니다.");
+
+    ErrorResponse response =
+        ErrorResponse.builder()
+            .status(HttpStatus.BAD_REQUEST.value())
+            .message("잘못된 요청입니다.")
+            .details(details)
+            .build();
+
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
   }
 }

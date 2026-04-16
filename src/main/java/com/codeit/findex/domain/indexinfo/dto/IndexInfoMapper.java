@@ -8,5 +8,5 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface IndexInfoMapper {
 
-  IndexInfoCreateResponse toIndexInfoCreateResponse(IndexInfo indexInfo);
+  IndexInfoResponse toIndexInfoCreateResponse(IndexInfo indexInfo);
 }
