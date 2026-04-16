@@ -13,7 +13,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "sync_job", indexes = {@Index(name = "idx_job_time", columnList = "job_time")})
+@Table(
+    name = "sync_job",
+    indexes = {@Index(name = "idx_job_time", columnList = "job_time")})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class SyncJob {
@@ -42,8 +44,14 @@ public class SyncJob {
   @Column(length = 20, nullable = false)
   private SyncResult result;
 
-  public SyncJob(Long id, JobType jobType, IndexInfo indexInfo, LocalDate targetDate, String worker,
-      LocalDateTime jobTime, SyncResult result) {
+  public SyncJob(
+      Long id,
+      JobType jobType,
+      IndexInfo indexInfo,
+      LocalDate targetDate,
+      String worker,
+      LocalDateTime jobTime,
+      SyncResult result) {
     this.id = id;
     this.jobType = jobType;
     this.indexInfo = indexInfo;
@@ -53,8 +61,14 @@ public class SyncJob {
     this.result = result;
   }
 
-  public static SyncJob create(Long id, JobType jobType, IndexInfo indexInfo, LocalDate targetDate,
-      String worker, LocalDateTime jobTime, SyncResult result) {
+  public static SyncJob create(
+      Long id,
+      JobType jobType,
+      IndexInfo indexInfo,
+      LocalDate targetDate,
+      String worker,
+      LocalDateTime jobTime,
+      SyncResult result) {
     return new SyncJob(id, jobType, indexInfo, targetDate, worker, jobTime, result);
   }
 }

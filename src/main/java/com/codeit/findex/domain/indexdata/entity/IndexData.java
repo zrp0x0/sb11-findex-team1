@@ -15,9 +15,10 @@ import java.time.LocalDate;
     name = "index_data",
     indexes = {@Index(name = "idx_base_date", columnList = "base_date")},
     uniqueConstraints = {
-        @UniqueConstraint(name = "uk_index_info_date", columnNames = {"index_info_id",
-            "base_date"})}
-)
+      @UniqueConstraint(
+          name = "uk_index_info_date",
+          columnNames = {"index_info_id", "base_date"})
+    })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class IndexData {
@@ -39,14 +40,19 @@ public class IndexData {
 
   @Column(precision = 15, scale = 2)
   private BigDecimal marketPrice;
+
   @Column(precision = 15, scale = 2)
   private BigDecimal closingPrice;
+
   @Column(precision = 15, scale = 2)
   private BigDecimal highPrice;
+
   @Column(precision = 15, scale = 2)
   private BigDecimal lowPrice;
+
   @Column(precision = 15, scale = 2)
   private BigDecimal versus;
+
   @Column(precision = 5, scale = 2)
   private BigDecimal fluctuationRate; // 등락률은 숫자가 작으므로 precision 5
 
@@ -54,7 +60,8 @@ public class IndexData {
   private Long tradingPrice;
   private Long marketTotalAmount;
 
-  public IndexData(IndexInfo indexInfo,
+  public IndexData(
+      IndexInfo indexInfo,
       LocalDate baseDate,
       SourceType sourceType,
       BigDecimal marketPrice,
@@ -65,8 +72,7 @@ public class IndexData {
       BigDecimal fluctuationRate,
       Long tradingQuantity,
       Long tradingPrice,
-      Long marketTotalAmount
-  ) {
+      Long marketTotalAmount) {
     this.indexInfo = indexInfo;
     this.baseDate = baseDate;
     this.sourceType = sourceType;
@@ -93,10 +99,20 @@ public class IndexData {
       BigDecimal fluctuationRate,
       Long tradingQuantity,
       Long tradingPrice,
-      Long marketTotalAmount
-  ) {
-    return new IndexData(indexInfo, baseDate, sourceType, marketPrice, closingPrice, highPrice,
-        lowPrice, versus, fluctuationRate, tradingQuantity, tradingPrice, marketTotalAmount);
+      Long marketTotalAmount) {
+    return new IndexData(
+        indexInfo,
+        baseDate,
+        sourceType,
+        marketPrice,
+        closingPrice,
+        highPrice,
+        lowPrice,
+        versus,
+        fluctuationRate,
+        tradingQuantity,
+        tradingPrice,
+        marketTotalAmount);
   }
 
   public void update(
