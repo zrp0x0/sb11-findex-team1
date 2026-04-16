@@ -6,6 +6,7 @@ import com.codeit.findex.domain.autosyncconfig.dto.AutoSyncConfigResponse;
 import com.codeit.findex.domain.autosyncconfig.dto.AutoSyncConfigUpdateRequest;
 import com.codeit.findex.domain.autosyncconfig.entity.AutoSyncConfig;
 import com.codeit.findex.domain.autosyncconfig.repository.AutoSyncConfigRepository;
+import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -134,7 +135,7 @@ public class AutoSyncConfigService {
   @Transactional
   public AutoSyncConfigResponse updateAutoSyncConfig(Long id, AutoSyncConfigUpdateRequest request) {
     AutoSyncConfig autoSyncConfig = autoSyncConfigRepository.findById(id)
-        .orElseThrow(() -> new IllegalArgumentException("자동 연동 설정을 찾을 수 없습니다."));
+        .orElseThrow(() -> new EntityNotFoundException("자동 연동 설정을 찾을 수 없습니다."));
 
     autoSyncConfig.updateEnabled(request.enabled());
     return toAutoSyncConfigResponse(autoSyncConfig);
