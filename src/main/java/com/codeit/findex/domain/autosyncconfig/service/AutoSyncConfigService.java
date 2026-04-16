@@ -6,17 +6,15 @@ import com.codeit.findex.domain.autosyncconfig.dto.AutoSyncConfigResponse;
 import com.codeit.findex.domain.autosyncconfig.entity.AutoSyncConfig;
 import com.codeit.findex.domain.autosyncconfig.repository.AutoSyncConfigRepository;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class AutoSyncConfigService {
 
   private final AutoSyncConfigRepository autoSyncConfigRepository;
-
-  public AutoSyncConfigService(AutoSyncConfigRepository autoSyncConfigRepository) {
-    this.autoSyncConfigRepository = autoSyncConfigRepository;
-  }
 
   public AutoSyncConfigPageResponse getAutoSyncConfigs(AutoSyncConfigListRequest request) {
     Long indexInfoId = request.indexInfoId();
@@ -51,7 +49,7 @@ public class AutoSyncConfigService {
         .toList();
 
     List<AutoSyncConfigResponse> content = pageItems.stream()
-        .map(this::toResponse)
+        .map(this::toAutoSyncConfigResponse)
         .toList();
 
     String nextCursor = null;
@@ -77,7 +75,7 @@ public class AutoSyncConfigService {
     );
   }
 
-  private AutoSyncConfigResponse toResponse(AutoSyncConfig autoSyncConfig) {
+  private AutoSyncConfigResponse toAutoSyncConfigResponse(AutoSyncConfig autoSyncConfig) {
     return new AutoSyncConfigResponse(
         autoSyncConfig.getId(),
         autoSyncConfig.getIndexInfo().getId(),
