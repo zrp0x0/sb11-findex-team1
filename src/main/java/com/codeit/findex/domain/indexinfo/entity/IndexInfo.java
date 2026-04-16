@@ -106,4 +106,11 @@ public class IndexInfo {
         SourceType.USER,
         favorite);
   }
+
+  public void update(Integer employedItemsCount, LocalDate basePointInTime, BigDecimal baseIndex, Boolean favorite) {
+    this.employedItemsCount = employedItemsCount;
+    this.basePointInTime = basePointInTime;
+    this.baseIndex = baseIndex;
+    this.favorite = favorite != null ? favorite : false;
+  }
 }
