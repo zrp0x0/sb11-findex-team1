@@ -33,4 +33,8 @@ public class AutoSyncConfig {
   public static AutoSyncConfig create(IndexInfo indexInfo, Boolean enabled) {
     return new AutoSyncConfig(indexInfo, enabled);
   }
+
+  public void updateEnabled(Boolean enabled) {
+    this.enabled = enabled;
+  }
 }
