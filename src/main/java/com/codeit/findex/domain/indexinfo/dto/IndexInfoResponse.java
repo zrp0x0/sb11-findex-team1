@@ -5,7 +5,7 @@ import com.codeit.findex.domain.common.enums.SourceType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public record IndexInfoCreateResponse(
+public record IndexInfoResponse(
     Long id,
     String indexClassification,
     String indexName,
@@ -14,7 +14,7 @@ public record IndexInfoCreateResponse(
     BigDecimal baseIndex,
     SourceType sourceType,
     Boolean favorite) {
-  public static IndexInfoCreateResponse create(
+  public static IndexInfoResponse create(
       Long id,
       String indexClassification,
       String indexName,
@@ -23,7 +23,7 @@ public record IndexInfoCreateResponse(
       BigDecimal baseIndex,
       SourceType sourceType,
       Boolean favorite) {
-    return new IndexInfoCreateResponse(
+    return new IndexInfoResponse(
         id,
         indexClassification,
         indexName,

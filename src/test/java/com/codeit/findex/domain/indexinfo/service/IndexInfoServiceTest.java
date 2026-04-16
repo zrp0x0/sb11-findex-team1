@@ -1,7 +1,7 @@
 package com.codeit.findex.domain.indexinfo.service;
 
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoCreateRequest;
-import com.codeit.findex.domain.indexinfo.dto.IndexInfoCreateResponse;
+import com.codeit.findex.domain.indexinfo.dto.IndexInfoResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +26,7 @@ class IndexInfoServiceTest {
             "KOSPI시리즈", "IT 서비스", 200, LocalDate.of(2023, 1, 1), new BigDecimal("1000.00"), false);
 
     // when
-    IndexInfoCreateResponse indexInfo = indexInfoService.createIndexInfo(request);
+    IndexInfoResponse indexInfo = indexInfoService.createIndexInfo(request);
 
     // then
     assertThat(indexInfo.id()).isNotNull();
