@@ -51,7 +51,7 @@ public class AutoSyncConfigService {
         .toList();
 
     List<AutoSyncConfigResponse> content = pageItems.stream()
-        .map(this::toResponse)
+        .map(this::toAutoSyncConfigResponse)
         .toList();
 
     String nextCursor = null;
@@ -77,7 +77,7 @@ public class AutoSyncConfigService {
     );
   }
 
-  private AutoSyncConfigResponse toResponse(AutoSyncConfig autoSyncConfig) {
+  private AutoSyncConfigResponse toAutoSyncConfigResponse(AutoSyncConfig autoSyncConfig) {
     return new AutoSyncConfigResponse(
         autoSyncConfig.getId(),
         autoSyncConfig.getIndexInfo().getId(),
