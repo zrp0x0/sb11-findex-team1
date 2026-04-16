@@ -35,24 +35,24 @@ public class AutoSyncConfigService {
       autoSyncConfigs = autoSyncConfigRepository.findByEnabled(enabled, sort);
     } else {
       autoSyncConfigs = autoSyncConfigRepository.findByIndexInfo_IdAndEnabled(
-        indexInfoId,
-        enabled,
-        sort
+          indexInfoId,
+          enabled,
+          sort
       );
     }
 
     List<AutoSyncConfig> filteredItems = autoSyncConfigs.stream()
-      .filter(config -> isAfterCursor(config, request))
-      .toList();
+        .filter(config -> isAfterCursor(config, request))
+        .toList();
 
     boolean hasNext = filteredItems.size() > size;
     List<AutoSyncConfig> pageItems = filteredItems.stream()
-      .limit(size)
-      .toList();
+        .limit(size)
+        .toList();
 
     List<AutoSyncConfigResponse> content = pageItems.stream()
-      .map(this::toResponse)
-      .toList();
+        .map(this::toResponse)
+        .toList();
 
     String nextCursor = null;
     Long nextIdAfter = null;
@@ -68,22 +68,22 @@ public class AutoSyncConfigService {
     }
 
     return new AutoSyncConfigPageResponse(
-      content,
-      nextCursor,
-      nextIdAfter,
-      content.size(),
-      (long) filteredItems.size(),
-      hasNext
+        content,
+        nextCursor,
+        nextIdAfter,
+        content.size(),
+        (long) filteredItems.size(),
+        hasNext
     );
   }
 
   private AutoSyncConfigResponse toResponse(AutoSyncConfig autoSyncConfig) {
     return new AutoSyncConfigResponse(
-      autoSyncConfig.getId(),
-      autoSyncConfig.getIndexInfo().getId(),
-      autoSyncConfig.getIndexInfo().getIndexClassification(),
-      autoSyncConfig.getIndexInfo().getIndexName(),
-      autoSyncConfig.getEnabled()
+        autoSyncConfig.getId(),
+        autoSyncConfig.getIndexInfo().getId(),
+        autoSyncConfig.getIndexInfo().getIndexClassification(),
+        autoSyncConfig.getIndexInfo().getIndexName(),
+        autoSyncConfig.getEnabled()
     );
   }
 
