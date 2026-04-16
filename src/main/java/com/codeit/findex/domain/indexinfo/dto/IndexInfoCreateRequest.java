@@ -12,10 +12,4 @@ public record IndexInfoCreateRequest(
     @NotNull(message = "채용 종목 수는 필수입니다.") Integer employedItemsCount,
     @NotNull(message = "기준 시점은 필수입니다.") LocalDate basePointInTime,
     @NotNull(message = "기준 지수는 필수입니다.") BigDecimal baseIndex,
-    Boolean favorite) {
-  public IndexInfoCreateRequest {
-    if (favorite == null) {
-      favorite = false;
-    }
-  }
-}
+    Boolean favorite) {}

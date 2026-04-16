@@ -97,6 +97,7 @@ public class IndexInfo {
       LocalDate basePointInTime,
       BigDecimal baseIndex,
       Boolean favorite) {
+    favorite = favorite != null && favorite;
     return new IndexInfo(
         indexClassification,
         indexName,
@@ -107,7 +108,11 @@ public class IndexInfo {
         favorite);
   }
 
-  public void update(Integer employedItemsCount, LocalDate basePointInTime, BigDecimal baseIndex, Boolean favorite) {
+  public void update(
+      Integer employedItemsCount,
+      LocalDate basePointInTime,
+      BigDecimal baseIndex,
+      Boolean favorite) {
     this.employedItemsCount = employedItemsCount;
     this.basePointInTime = basePointInTime;
     this.baseIndex = baseIndex;

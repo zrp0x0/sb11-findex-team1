@@ -23,11 +23,12 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(EntityNotFoundException.class)
   public ResponseEntity<ErrorResponse> handlerEntityNotFoundException(EntityNotFoundException e) {
-    ErrorResponse response = ErrorResponse.builder()
-        .status(HttpStatus.NOT_FOUND.value())
-        .message("데이터를 찾을 수 없습니다.")
-        .details(e.getMessage())
-        .build();
+    ErrorResponse response =
+        ErrorResponse.builder()
+            .status(HttpStatus.NOT_FOUND.value())
+            .message("잘못된 요청입니다.") // API 명세서에 맞게 수정했습니다.
+            .details(e.getMessage())
+            .build();
 
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
   }
