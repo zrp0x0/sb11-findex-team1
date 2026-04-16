@@ -3,12 +3,14 @@ package com.codeit.findex.domain.autosyncconfig.service;
 import com.codeit.findex.domain.autosyncconfig.dto.AutoSyncConfigListRequest;
 import com.codeit.findex.domain.autosyncconfig.dto.AutoSyncConfigPageResponse;
 import com.codeit.findex.domain.autosyncconfig.dto.AutoSyncConfigResponse;
+import com.codeit.findex.domain.autosyncconfig.dto.AutoSyncConfigUpdateRequest;
 import com.codeit.findex.domain.autosyncconfig.entity.AutoSyncConfig;
 import com.codeit.findex.domain.autosyncconfig.repository.AutoSyncConfigRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -127,5 +129,14 @@ public class AutoSyncConfigService {
     }
 
     return compare > 0 || (compare == 0 && config.getId() > idAfter);
+  }
+
+  @Transactional
+  public AutoSyncConfigResponse updateAutoSyncConfig(Long id, AutoSyncConfigUpdateRequest request) {
+    AutoSyncConfig autoSyncConfig = autoSyncConfigRepository.findById(id)
+        .orElseThrow(() -> new IllegalArgumentException("자동 연동 설정을 찾을 수 없습니다."));
+
+    autoSyncConfig.updateEnabled(request.enabled());
+    return toAutoSyncConfigResponse(autoSyncConfig);
   }
 }
