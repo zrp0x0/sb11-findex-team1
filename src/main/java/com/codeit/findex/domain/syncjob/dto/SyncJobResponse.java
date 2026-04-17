@@ -7,8 +7,8 @@ import java.time.LocalDateTime;
 
 public record SyncJobResponse(
     Long id,
-    JobType JobType,
-    Long indexInfold,
+    JobType jobType,
+    Long indexInfoId,
     LocalDate targetDate,
     String worker,
     LocalDateTime jobTime,
