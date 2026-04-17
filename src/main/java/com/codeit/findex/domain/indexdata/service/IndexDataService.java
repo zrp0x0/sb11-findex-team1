@@ -53,6 +53,6 @@ public class IndexDataService {
         request.tradingPrice(),
         request.marketTotalAmount()
     );
-    return IndexDataResponse.from(indexData);
+    return indexDataMapper.toResponse(indexData);
   }
 }
