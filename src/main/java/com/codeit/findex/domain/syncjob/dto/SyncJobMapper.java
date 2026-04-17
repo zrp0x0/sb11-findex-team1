@@ -1,7 +1,6 @@
 package com.codeit.findex.domain.syncjob.dto;
 
 import com.codeit.findex.domain.syncjob.entity.SyncJob;
-import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -11,8 +10,4 @@ public interface SyncJobMapper {
 
   @Mapping(target = "indexInfoId", source = "indexInfo.id")
   SyncJobResponse toSyncJobResponse(SyncJob syncJob);
-
-  List<SyncJobResponse> toSyncJobResponseList(List<SyncJob> syncJobList);
-
-
 }
