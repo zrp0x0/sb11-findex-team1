@@ -18,4 +18,7 @@ public interface IndexDataMapper {
       BigDecimal fluctuationRate,
       BigDecimal currentPrice,
       BigDecimal beforePrice);
+
+  @Mapping(source = "indexInfo.id", target = "indexInfoId")
+  com.codeit.findex.domain.indexdata.dto.response.IndexDataResponse toResponse(IndexData indexData);
 }

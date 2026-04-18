@@ -41,23 +41,39 @@ public class IndexInfoService {
     // 3. DB 저장
     IndexInfo savedIndexInfo = indexInfoRepository.save(newIndexInfo);
 
-    return indexInfoMapper.toIndexInfoCreateResponse(savedIndexInfo);
+    return indexInfoMapper.toIndexInfoResponse(savedIndexInfo);
+  }
+
+  public IndexInfoResponse readIndexInfoById(Long id) {
+    IndexInfo indexInfo =
+        indexInfoRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("지수 정보를 찾을 수 없습니다 ID: " + id));
+    return indexInfoMapper.toIndexInfoResponse(indexInfo);
   }
 
   @Transactional
   public IndexInfoResponse updateIndexInfo(Long id, IndexInfoUpdateRequest request) {
-    IndexInfo indexInfo = indexInfoRepository.findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("지수 정보를 찾을 수 없습니다 ID: " + id));
+    IndexInfo indexInfo =
+        indexInfoRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("지수 정보를 찾을 수 없습니다 ID: " + id));
 
-    indexInfo.update(request.employedItemsCount(), request.basePointInTime(), request.baseIndex(), request.favorite());
+    indexInfo.update(
+        request.employedItemsCount(),
+        request.basePointInTime(),
+        request.baseIndex(),
+        request.favorite());
 
-    return indexInfoMapper.toIndexInfoCreateResponse(indexInfo);
+    return indexInfoMapper.toIndexInfoResponse(indexInfo);
   }
 
   @Transactional
   public void deleteIndexInfo(Long id) {
-    IndexInfo indexInfo = indexInfoRepository.findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("지수 정보를 찾을 수 없습니다. ID: " + id));
+    IndexInfo indexInfo =
+        indexInfoRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("지수 정보를 찾을 수 없습니다. ID: " + id));
 
     indexInfoRepository.delete(indexInfo);
   }

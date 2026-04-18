@@ -27,7 +27,7 @@ public class GlobalExceptionHandler {
     ErrorResponse response =
         ErrorResponse.builder()
             .status(HttpStatus.NOT_FOUND.value())
-            .message("데이터를 찾을 수 없습니다.")
+            .message("잘못된 요청입니다.") // API 명세서에 맞게 수정했습니다.
             .details(e.getMessage())
             .build();
 
