@@ -15,33 +15,22 @@ import org.springframework.web.client.RestClient;
 @RequiredArgsConstructor
 public class IndexInfoOpenApiClient {
 
+  // yyyyMMdd형식
   private static final DateTimeFormatter BASIC_DATE = DateTimeFormatter.BASIC_ISO_DATE;
 
   private final RestClient.Builder restClientBuilder;
 
-  // yaml(설정 파일)로 입력받음
   @Value("${open-api.stock-index.base-url}")
   private String baseUrl;
 
-  @Value("${open-api.stock-index.service-key}")
+  @Value("${open-api.stock-index.service-key:}")
   private String serviceKey;
 
   @Value("${open-api.stock-index.num-of-rows:100}")
   private int numOfRows;
 
   public List<OpenApiIndexInfoResponse> fetchIndexInfos(LocalDate baseDate) {
-    if (baseDate == null) {
-      throw new IllegalArgumentException("baseDate는 필수입니다.");
-    }
-    if (baseUrl == null || baseUrl.isBlank()) {
-      throw new IllegalStateException("open-api.stock-index.base-url 설정이 필요합니다.");
-    }
-    if (serviceKey == null || serviceKey.isBlank()) {
-      throw new IllegalStateException("open-api.stock-index.service-key 설정이 필요합니다.");
-    }
-    if (numOfRows < 1) {
-      throw new IllegalStateException("numOfRows는 1 이상이어야 합니다. 현재값: " + numOfRows);
-    }
+    validateConfig();
 
     RestClient restClient = restClientBuilder.baseUrl(baseUrl).build();
 
@@ -56,22 +45,33 @@ public class IndexInfoOpenApiClient {
           restClient
               .get()
               .uri(
-                  uriBuilder ->
-                      uriBuilder
-                          .queryParam("serviceKey", serviceKey)
-                          .queryParam("resultType", "json")
-                          .queryParam("pageNo", currentPageNo)
-                          .queryParam("numOfRows", numOfRows)
-                          .queryParam("basDt", baseDate.format(BASIC_DATE))
-                          .build())
+                  uriBuilder -> {
+                    uriBuilder
+                        .queryParam("serviceKey", serviceKey)
+                        .queryParam("resultType", "json")
+                        .queryParam("pageNo", currentPageNo)
+                        .queryParam("numOfRows", numOfRows);
+
+                    if (baseDate != null) {
+                      uriBuilder.queryParam("basDt", baseDate.format(BASIC_DATE));
+                    }
+
+                    return uriBuilder.build();
+                  })
               .retrieve()
               .body(JsonNode.class);
 
+      // 응답은 item ⊂ items ⊂ body ⊂ response 구조
       if (root == null || root.isNull()) {
         throw new IllegalStateException("Open API 응답 본문이 비어 있습니다.");
       }
 
-      JsonNode body = root.path("body");
+      JsonNode response = root.path("response");
+      if (response.isMissingNode() || response.isNull()) {
+        throw new IllegalStateException("Open API 응답에 response가 없습니다.");
+      }
+
+      JsonNode body = response.path("body");
       if (body.isMissingNode() || body.isNull()) {
         throw new IllegalStateException("Open API 응답에 body가 없습니다.");
       }
@@ -82,10 +82,10 @@ public class IndexInfoOpenApiClient {
       }
       totalCount = totalCountNode.asInt();
 
-      // 정상 조회 결과가 0건이면 [] 반환위해 종료
-      if(totalCount == 0) {
+      if (totalCount == 0) {
         break;
       }
+
       JsonNode itemNode = body.path("items").path("item");
       if (itemNode.isMissingNode() || itemNode.isNull()) {
         throw new IllegalStateException("Open API 응답에 items.item이 없습니다.");
@@ -94,7 +94,6 @@ public class IndexInfoOpenApiClient {
       if (itemNode.isArray()) {
         for (JsonNode node : itemNode) {
           OpenApiIndexInfoResponse parsed = parse(node);
-          // null일시 다음 데이터(items.item)로 넘어감.
           if (parsed != null) {
             results.add(parsed);
           }
@@ -107,34 +106,36 @@ public class IndexInfoOpenApiClient {
       } else {
         throw new IllegalStateException("Open API items.item 형식이 올바르지 않습니다.");
       }
+
       pageNo++;
     }
+
     return results;
   }
 
-  // items.item 객체 or Object하나를 입력받음
   private OpenApiIndexInfoResponse parse(JsonNode node) {
     String indexClassification = text(node, "idxCsf");
     String indexName = text(node, "idxNm");
 
-    // 필수값 누락
     if (indexClassification == null || indexName == null) {
-      return null;  // 이 행만 스킵 / 다음 item으로 넘어감
+      return null;
     }
 
     return new OpenApiIndexInfoResponse(
         indexClassification,
         indexName,
-        // 값이 없는 등 올바르지 않으면 null로 매핑
         integer(node, "epyItmsCnt"),
         date(node, "basPntm"),
         decimal(node, "basIdx"));
   }
 
-  // 필드/값이 없거나 공백일때 null로 변환
+  // 문자열 변환, 공백 제거, null/공백 정리
   private String text(JsonNode node, String field) {
     String value = node.path(field).asText(null);
-    return isBlank(value) ? null : value.trim();
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    return value.trim();
   }
 
   private Integer integer(JsonNode node, String field) {
@@ -173,7 +174,16 @@ public class IndexInfoOpenApiClient {
     }
   }
 
-  private boolean isBlank(String value) {
-    return value == null || value.trim().isEmpty();
+  // 설정 값 예외처리
+  private void validateConfig() {
+    if (baseUrl == null || baseUrl.isBlank()) {
+      throw new IllegalStateException("open-api.stock-index.base-url 설정이 필요합니다.");
+    }
+    if (serviceKey == null || serviceKey.isBlank()) {
+      throw new IllegalStateException("open-api.stock-index.service-key 설정이 필요합니다.");
+    }
+    if (numOfRows < 1) {
+      throw new IllegalStateException("numOfRows는 1 이상이어야 합니다. 현재값: " + numOfRows);
+    }
   }
 }

@@ -24,6 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class SyncJobService {
 
+  // 날짜 입력이 없는경우 / 휴일 대비
+  private static final int MAX_LOOKBACK_DAYS = 30;
+
   private final IndexInfoOpenApiClient indexInfoOpenApiClient;
   private final IndexInfoSyncJobMapper indexInfoSyncJobMapper;
   private final SyncJobRepository syncJobRepository;
@@ -32,15 +35,7 @@ public class SyncJobService {
   @Transactional
   public List<IndexInfoSyncJobResponse> syncIndexInfos(String worker) {
     String resolvedWorker = (worker == null || worker.isBlank()) ? "system" : worker;
-    LocalDate baseDate = LocalDate.now();
-
-    List<OpenApiIndexInfoResponse> openApiRows;
-    try {
-      openApiRows = indexInfoOpenApiClient.fetchIndexInfos(baseDate);
-    } catch (RuntimeException e) {
-      throw new IllegalStateException("지수 정보 연동 호출 실패", e);
-    }
-
+    List<OpenApiIndexInfoResponse> openApiRows = fetchLatestAvailableRows();
     List<IndexInfoSyncJobResponse> syncJobResponses = new ArrayList<>();
 
     for (OpenApiIndexInfoResponse row : openApiRows) {
@@ -50,10 +45,35 @@ public class SyncJobService {
     return syncJobResponses;
   }
 
-  // 성공, 실패 체크
+  // client를 호출하여 외부 API 데이터를 받아옴 / 최신(처음으로 존재) 유효 날짜 데이터 반환
+  private List<OpenApiIndexInfoResponse> fetchLatestAvailableRows() {
+    LocalDate baseDate = LocalDate.now();
+
+    for (int i = 0; i < MAX_LOOKBACK_DAYS; i++) {
+      LocalDate targetDate = baseDate.minusDays(i);
+
+      try {
+        List<OpenApiIndexInfoResponse> rows = indexInfoOpenApiClient.fetchIndexInfos(targetDate);
+        if (!rows.isEmpty()) {
+          return rows;
+        }
+      } catch (RuntimeException e) {
+        throw new IllegalStateException("지수 정보 연동 호출 실패: " + e.getMessage(), e);
+      }
+    }
+
+    try {
+      return indexInfoOpenApiClient.fetchIndexInfos(null);
+    } catch (RuntimeException e) {
+      throw new IllegalStateException("지수 정보 연동 호출 실패: " + e.getMessage(), e);
+    }
+  }
+
   private SyncJob saveSyncJob(OpenApiIndexInfoResponse row, String worker) {
     try {
-      // DB에 반영(upsert)
+      // null 체크
+      validateRow(row);
+
       IndexInfo indexInfo = upsertIndexInfo(row);
 
       SyncJob successJob =
@@ -65,7 +85,6 @@ public class SyncJobService {
               worker,
               LocalDateTime.now(),
               SyncResult.SUCCESS);
-
       return syncJobRepository.save(successJob);
     } catch (RuntimeException e) {
       SyncJob failedJob =
@@ -77,15 +96,25 @@ public class SyncJobService {
               worker,
               LocalDateTime.now(),
               SyncResult.FAILED);
-
       return syncJobRepository.save(failedJob);
+    }
+  }
+
+  private void validateRow(OpenApiIndexInfoResponse row) {
+    if (row.employedItemsCount() == null) {
+      throw new IllegalStateException("채용 종목 수가 없습니다.");
+    }
+    if (row.basePointInTime() == null) {
+      throw new IllegalStateException("기준 시점이 없습니다.");
+    }
+    if (row.baseIndex() == null) {
+      throw new IllegalStateException("기준 지수 값이 없습니다.");
     }
   }
 
   private IndexInfo upsertIndexInfo(OpenApiIndexInfoResponse row) {
     return indexInfoRepository
         .findByIndexClassificationAndIndexName(row.indexClassification(), row.indexName())
-        // 값이 있을 경우
         .map(
             existing -> {
               existing.update(
@@ -95,7 +124,6 @@ public class SyncJobService {
                   existing.getFavorite());
               return existing;
             })
-        // 값이 없을 경우
         .orElseGet(
             () ->
                 indexInfoRepository.save(
