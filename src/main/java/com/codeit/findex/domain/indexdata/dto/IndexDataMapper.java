@@ -12,6 +12,11 @@ public interface IndexDataMapper {
   @Mapping(source = "latest.indexInfo.id", target = "indexInfoId")
   @Mapping(source = "latest.indexInfo.indexClassification", target = "indexClassification")
   @Mapping(source = "latest.indexInfo.indexName", target = "indexName")
+  @Mapping(source = "versus", target = "versus")
+  @Mapping(source = "fluctuationRate", target = "fluctuationRate")
+  @Mapping(source = "currentPrice", target = "currentPrice")
+  @Mapping(source = "beforePrice", target = "beforePrice")
+
   IndexDataFavoriteResponse toIndexDataFavoriteResponse(
       IndexData latest,
       BigDecimal versus,

@@ -63,7 +63,7 @@ public class IndexDataService {
       BigDecimal versus = currentPrice.subtract(beforePrice);
 
       // 등락률 계산 - (현재가 - 이전가) / 이전가 * 100
-      BigDecimal fluctuationRate = BigDecimal.ZERO;
+      BigDecimal fluctuationRate = null;
       if (beforePrice.compareTo(BigDecimal.ZERO) != 0) {
         fluctuationRate =
             versus
