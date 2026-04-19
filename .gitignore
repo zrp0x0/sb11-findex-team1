@@ -49,3 +49,6 @@ out/
 .env.*
 application-secret.yml
 application-local.yml
+
+# Querydsl Q-classes
+/build/

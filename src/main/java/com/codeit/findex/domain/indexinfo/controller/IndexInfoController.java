@@ -1,8 +1,6 @@
 package com.codeit.findex.domain.indexinfo.controller;
 
-import com.codeit.findex.domain.indexinfo.dto.IndexInfoCreateRequest;
-import com.codeit.findex.domain.indexinfo.dto.IndexInfoResponse;
-import com.codeit.findex.domain.indexinfo.dto.IndexInfoUpdateRequest;
+import com.codeit.findex.domain.indexinfo.dto.*;
 import com.codeit.findex.domain.indexinfo.service.IndexInfoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -21,6 +19,24 @@ import org.springframework.web.bind.annotation.*;
 public class IndexInfoController {
 
   private final IndexInfoService indexInfoService;
+
+  @Operation(
+          summary = "지수 정보 목록 조회",
+          description = "지수 정보 목록을 조회합니다. 필터링, 정렬, 커서 기반 페이지네이션을 지원합니다.",
+          operationId = "getIndexInfos")
+  @ApiResponses(
+          value = {
+                  @ApiResponse(responseCode = "200", description = "지수 정보 목록 조회 성공"),
+                  @ApiResponse(responseCode = "400", description = "잘못된 요청 (유효하지 않은 필터 값 등)"),
+                  @ApiResponse(responseCode = "500", description = "서버 오류")
+          })
+  @GetMapping
+  public ResponseEntity<IndexInfoCursorResponse<IndexInfoResponse>> getIndexInfos(
+          @Valid @ModelAttribute IndexInfoSearchCondition condition
+  ) {
+    IndexInfoCursorResponse<IndexInfoResponse> response = indexInfoService.getIndexInfos(condition);
+    return ResponseEntity.ok(response);
+  }
 
   @Operation(
       summary = "지수 정보 등록",

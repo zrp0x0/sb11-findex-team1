@@ -1,12 +1,15 @@
 package com.codeit.findex.global.error;
 
 import jakarta.persistence.EntityNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -34,18 +37,6 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
   }
 
-  @ExceptionHandler(Exception.class)
-  public ResponseEntity<ErrorResponse> handlerGeneralException(Exception e) {
-    ErrorResponse response =
-        ErrorResponse.builder()
-            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-            .message("서버 내부 오류가 발생했습니다.")
-            .details(e.getMessage())
-            .build();
-
-    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-  }
-
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ErrorResponse> handlerMethodArgumentNotValidException(
       MethodArgumentNotValidException e) {
@@ -63,5 +54,39 @@ public class GlobalExceptionHandler {
             .build();
 
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+  }
+
+  // @ModelAttribute 전용
+  @ExceptionHandler(BindException.class)
+  public ResponseEntity<ErrorResponse> handlerBindException(BindException e) {
+    String details =
+        e.getBindingResult().getFieldErrors().stream()
+            .findFirst()
+            .map(error -> error.getField() + ": " + error.getDefaultMessage())
+            .orElse("요청 파라미터가 올바르지 않습니다.");
+
+    ErrorResponse response =
+        ErrorResponse.builder()
+            .status(HttpStatus.BAD_REQUEST.value())
+            .message("잘못된 요청입니다.")
+            .details(details)
+            .build();
+
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+  }
+
+  // 500 에러
+  @ExceptionHandler(Exception.class)
+  public ResponseEntity<ErrorResponse> handlerGeneralException(Exception e) {
+    log.error("Internal Server Error Occurred: ", e); // 클라이언트에게 서버 오류의 내역을 보여주지 않도록 처리
+
+    ErrorResponse response =
+        ErrorResponse.builder()
+            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+            .message("서버 내부 오류가 발생했습니다.")
+            .details("관리자에게 문의해주세요.")
+            .build();
+
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
   }
 }
