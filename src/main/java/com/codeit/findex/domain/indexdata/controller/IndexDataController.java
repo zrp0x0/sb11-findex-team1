@@ -35,4 +35,17 @@ public class IndexDataController {
     IndexDataResponse response = indexDataService.update(id, request);
     return ResponseEntity.ok(response);
   }
+
+  @io.swagger.v3.oas.annotations.Operation(
+      summary = "지수 차트 조회",
+      description = "지수의 차트 데이터를 조회합니다."
+  )
+  @GetMapping("/{id}/chart")
+  public ResponseEntity<com.codeit.findex.domain.indexdata.dto.response.IndexChartResponse> getChart(
+      @io.swagger.v3.oas.annotations.Parameter(description = "지수 정보 ID")
+      @PathVariable Long id,
+      @jakarta.validation.Valid @org.springframework.web.bind.annotation.ModelAttribute com.codeit.findex.domain.indexdata.dto.request.IndexChartRequest request
+  ) {
+    return  ResponseEntity.ok(indexDataService.getChart(id, request.periodType()));
+  }
 }
