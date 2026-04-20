@@ -3,10 +3,14 @@ package com.codeit.findex.domain.indexdata.service;
 import com.codeit.findex.domain.indexdata.dto.IndexDataFavoriteResponse;
 import com.codeit.findex.domain.indexdata.dto.IndexDataMapper;
 import com.codeit.findex.domain.indexdata.dto.request.IndexDataUpdateRequest;
+import com.codeit.findex.domain.indexdata.dto.request.IndexPerformanceRankRequest;
 import com.codeit.findex.domain.indexdata.dto.request.PeriodType;
+import com.codeit.findex.domain.indexdata.dto.request.UnitPeriodType;
 import com.codeit.findex.domain.indexdata.dto.response.ChartDataPoint;
 import com.codeit.findex.domain.indexdata.dto.response.IndexChartResponse;
 import com.codeit.findex.domain.indexdata.dto.response.IndexDataResponse;
+import com.codeit.findex.domain.indexdata.dto.response.IndexPerformanceResponse;
+import com.codeit.findex.domain.indexdata.dto.response.RankedIndexPerformanceResponse;
 import com.codeit.findex.domain.indexdata.entity.IndexData;
 import com.codeit.findex.domain.indexdata.repository.IndexDataRepository;
 import com.codeit.findex.domain.indexinfo.entity.IndexInfo;
@@ -15,9 +19,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class IndexDataService {
+
+  private static final int DEFAULT_RANK_LIMIT = 10;
 
   private final IndexDataRepository indexDataRepository;
   private final IndexInfoRepository indexInfoRepository;
@@ -59,7 +67,7 @@ public class IndexDataService {
       BigDecimal ma5 = null;
       if (i >= 4) {
         BigDecimal sum5 = BigDecimal.ZERO;
-        for (int j = i -4; j < i; j++) {
+        for (int j = i - 4; j <= i; j++) {
           sum5 = sum5.add(fetchedData.get(j).getClosingPrice());
         }
         ma5 = sum5.divide(BigDecimal.valueOf(5), 2, RoundingMode.HALF_UP);
@@ -69,7 +77,7 @@ public class IndexDataService {
       BigDecimal ma20 = null;
       if (i >= 19) {
         BigDecimal sum20 = BigDecimal.ZERO;
-        for (int j = i - 19; j < i; j++) {
+        for (int j = i - 19; j <= i; j++) {
           sum20 = sum20.add(fetchedData.get(j).getClosingPrice());
         }
         ma20 = sum20.divide(BigDecimal.valueOf(20), 2, RoundingMode.HALF_UP);
@@ -111,6 +119,97 @@ public class IndexDataService {
         .map(indexDataMapper::toIndexDataFavoriteResponse)
         .toList();
   }
+
+  public List<RankedIndexPerformanceResponse> getPerformanceRank(
+      IndexPerformanceRankRequest request) {
+    LocalDate currentDate = indexDataRepository.findTopByOrderByBaseDateDesc()
+        .orElseThrow(() -> new IllegalStateException("지수 데이터가 없습니다."))
+        .getBaseDate();
+    LocalDate targetDate = getRankTargetDate(currentDate, request.periodType());
+    List<IndexData> currentDataList = findCurrentData(currentDate, request.indexInfoId());
+
+    List<IndexPerformanceResponse> performances = new ArrayList<>();
+    for (IndexData currentData : currentDataList) {
+      toIndexPerformance(currentData, targetDate).ifPresent(performances::add);
+    }
+
+    performances.sort(
+        Comparator.comparing(IndexPerformanceResponse::fluctuationRate).reversed());
+
+    int limit = resolveRankLimit(request.limit());
+    List<RankedIndexPerformanceResponse> ranks = new ArrayList<>();
+    for (int i = 0; i < performances.size() && i < limit; i++) {
+      ranks.add(new RankedIndexPerformanceResponse(performances.get(i), i + 1));
+    }
+    return ranks;
+  }
+
+  private LocalDate getRankTargetDate(LocalDate currentDate, UnitPeriodType periodType) {
+    if (periodType == null) {
+      throw new IllegalArgumentException("기간 유형은 필수입니다.");
+    }
+    return switch (periodType) {
+      case DAILY -> currentDate.minusDays(1);
+      case WEEKLY -> currentDate.minusWeeks(1);
+      case MONTHLY -> currentDate.minusMonths(1);
+    };
+  }
+
+  private List<IndexData> findCurrentData(LocalDate currentDate, Long indexInfoId) {
+    if (indexInfoId == null) {
+      return indexDataRepository.findByBaseDate(currentDate);
+    }
+    return indexDataRepository.findByBaseDateAndIndexInfoId(currentDate, indexInfoId);
+  }
+
+  private Optional<IndexPerformanceResponse> toIndexPerformance(
+      IndexData currentData, LocalDate targetDate) {
+    if (currentData.getClosingPrice() == null) {
+      return Optional.empty();
+    }
+
+    IndexInfo indexInfo = currentData.getIndexInfo();
+    Optional<IndexData> compareDataOptional =
+        indexDataRepository.findFirstByIndexInfoIdAndBaseDateLessThanEqualOrderByBaseDateDesc(
+            indexInfo.getId(), targetDate);
+    if (compareDataOptional.isEmpty()) {
+      return Optional.empty();
+    }
+
+    IndexData compareData = compareDataOptional.get();
+    BigDecimal beforePrice = compareData.getClosingPrice();
+    if (beforePrice == null || beforePrice.compareTo(BigDecimal.ZERO) == 0) {
+      return Optional.empty();
+    }
+
+    BigDecimal currentPrice = currentData.getClosingPrice();
+    BigDecimal versus = currentPrice.subtract(beforePrice);
+    BigDecimal fluctuationRate = versus
+        .divide(beforePrice, 6, RoundingMode.HALF_UP)
+        .multiply(BigDecimal.valueOf(100))
+        .setScale(2, RoundingMode.HALF_UP);
+
+    return Optional.of(new IndexPerformanceResponse(
+        indexInfo.getId(),
+        indexInfo.getIndexClassification(),
+        indexInfo.getIndexName(),
+        versus,
+        fluctuationRate,
+        currentPrice,
+        beforePrice
+    ));
+  }
+
+  private int resolveRankLimit(Integer limit) {
+    if (limit == null) {
+      return DEFAULT_RANK_LIMIT;
+    }
+    if (limit < 1) {
+      throw new IllegalArgumentException("랭킹 개수는 1 이상이어야 합니다.");
+    }
+    return limit;
+  }
+
 
   @Transactional
   public IndexDataResponse update(Long id, IndexDataUpdateRequest request) {
