@@ -51,9 +51,12 @@ public class GlobalExceptionHandler {
       MethodArgumentNotValidException e) {
     String details =
         e.getBindingResult().getFieldErrors().stream()
-            .findFirst()
+            .findFirst() // field Errors 먼저 확인
             .map(error -> error.getField() + ": " + error.getDefaultMessage())
-            .orElse("요청값이 올바르지 않습니다.");
+            .orElseGet(() -> e.getBindingResult().getGlobalErrors().stream()
+                .findFirst() // 없다면, globalErrors 확인
+                .map(error -> error.getDefaultMessage())
+                .orElse("요청값이 올바르지 않습니다.")); // 둘 다 없다면, 기본 문구 사용
 
     ErrorResponse response =
         ErrorResponse.builder()

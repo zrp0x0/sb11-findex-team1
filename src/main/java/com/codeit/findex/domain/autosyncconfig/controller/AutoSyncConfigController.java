@@ -27,7 +27,9 @@ public class AutoSyncConfigController {
 
   private final AutoSyncConfigService autoSyncConfigService;
 
-  @Operation(summary = "자동 연동 설정 목록 조회", description = "자동 연동 설정 목록을 조회합니다. 필터링, 정렬, 커서 기반 페이지네이션을 지원합니다.", operationId = "getAutoSyncConfigList")
+  @Operation(summary = "자동 연동 설정 목록 조회",
+      description = "자동 연동 설정 목록을 조회합니다. 필터링, 정렬, 커서 기반 페이지네이션을 지원합니다.",
+      operationId = "getAutoSyncConfigList")
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "자동 연동 설정 목록 조회 성공"),
       @ApiResponse(responseCode = "400", description = "잘못된 요청 (유효하지 않은 필터 값 등)"),
@@ -40,7 +42,9 @@ public class AutoSyncConfigController {
     return ResponseEntity.ok(response);
   }
 
-  @Operation(summary = "자동 연동 설정 수정", description = "기존 자동 연동 설정을 수정합니다.", operationId = "updateAutoSyncConfig")
+  @Operation(summary = "자동 연동 설정 수정",
+      description = "기존 자동 연동 설정을 수정합니다.",
+      operationId = "updateAutoSyncConfig")
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "자동 연동 설정 수정 성공"),
       @ApiResponse(responseCode = "400", description = "잘못된 요청 (유효하지 않은 설정 값 등)"),
