@@ -53,7 +53,7 @@ public class SyncJobService {
     List<IndexInfoSyncJobResponse> syncJobResponses = new ArrayList<>();
 
     for (OpenApiIndexInfoResponse row : openApiRows) {
-      SyncJob savedJob = saveSyncJob(row, resolvedWorker);
+      SyncJob savedJob = saveIndexInfosSyncJob(row, resolvedWorker);
       syncJobResponses.add(indexInfoSyncJobMapper.toResponse(savedJob));
     }
     return syncJobResponses;
@@ -82,11 +82,11 @@ public class SyncJobService {
     }
   }
 
-  private SyncJob saveSyncJob(OpenApiIndexInfoResponse row, String worker) {
+  private SyncJob saveIndexInfosSyncJob(OpenApiIndexInfoResponse row, String worker) {
     try {
       validateIndexInfosRow(row);
 
-      IndexInfo indexInfo = upsertIndexInfo(row);
+      IndexInfo indexInfo = upsertIndexInfos(row);
 
       SyncJob successJob =
           SyncJob.create(
@@ -124,7 +124,7 @@ public class SyncJobService {
     }
   }
 
-  private IndexInfo upsertIndexInfo(OpenApiIndexInfoResponse row) {
+  private IndexInfo upsertIndexInfos(OpenApiIndexInfoResponse row) {
     return indexInfoRepository
         .findByIndexClassificationAndIndexName(row.indexClassification(), row.indexName())
         .map(
@@ -184,7 +184,7 @@ public class SyncJobService {
       }
 
       return syncJobResponses;
-    } catch (IllegalArgumentException | EntityNotFoundException e) {  // 400, 404는 핸들러처리 > 그대로 전달
+    } catch (IllegalArgumentException | EntityNotFoundException e) { // 400, 404는 핸들러처리 > 그대로 전달
       throw e;
     } catch (RuntimeException e) {
       throw new IllegalStateException("지수 데이터 연동 호출 실패: " + e.getMessage(), e); // 나머지 500

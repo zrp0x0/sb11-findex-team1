@@ -61,13 +61,10 @@ public class SyncJobController {
   public ResponseEntity<List<IndexDataSyncJobResponse>> syncIndexData(
       @Valid @RequestBody SyncIndexDataRequest request,
       @Parameter(hidden = true) HttpServletRequest httpRequest) {
-
     String worker = httpRequest.getRemoteAddr();
-
     List<IndexDataSyncJobResponse> response =
         syncJobService.syncIndexData(
             request.indexInfoIds(), request.baseDateFrom(), request.baseDateTo(), worker);
-
     return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
   }
 }
