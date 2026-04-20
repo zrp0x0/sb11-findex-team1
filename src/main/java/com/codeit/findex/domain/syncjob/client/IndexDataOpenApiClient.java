@@ -67,17 +67,17 @@ public class IndexDataOpenApiClient {
         throw new IllegalStateException("Open API 응답 본문이 비어 있습니다.");
       }
 
-      JsonNode body = root.path("body");
+      JsonNode response = root.path("response");
+      if (response.isMissingNode() || response.isNull()) {
+        throw new IllegalStateException("Open API 응답에 response가 없습니다.");
+      }
+
+      JsonNode body = response.path("body");
       if (body.isMissingNode() || body.isNull()) {
         throw new IllegalStateException("Open API 응답에 body가 없습니다.");
       }
 
-      JsonNode totalCountNode = body.path("totalCount");
-      if (totalCountNode.isMissingNode() || totalCountNode.isNull()) {
-        throw new IllegalStateException("Open API 응답에 totalCount가 없습니다.");
-      }
-      totalCount = totalCountNode.asInt();
-
+      totalCount = parseTotalCount(body.path("totalCount"));
       if (totalCount == 0) {
         break;
       }
@@ -102,8 +102,10 @@ public class IndexDataOpenApiClient {
       } else {
         throw new IllegalStateException("Open API items.item 형식이 올바르지 않습니다.");
       }
+
       pageNo++;
     }
+
     return results;
   }
 
@@ -112,7 +114,6 @@ public class IndexDataOpenApiClient {
     String indexName = text(node, "idxNm");
     LocalDate baseDate = date(node, "basDt");
 
-    // 핵심 식별값 누락 row는 스킵
     if (indexClassification == null || indexName == null || baseDate == null) {
       return null;
     }
@@ -132,37 +133,24 @@ public class IndexDataOpenApiClient {
         longValue(node, "lstgMrktTotAmt"));
   }
 
-  // 문자열 변환, 공백 제거, null/공백 정리
+  private int parseTotalCount(JsonNode totalCountNode) {
+    String raw = totalCountNode.asText(null);
+    if (raw == null || raw.isBlank()) {
+      throw new IllegalStateException("Open API 응답에 totalCount가 없습니다.");
+    }
+    try {
+      return Integer.parseInt(raw.trim());
+    } catch (NumberFormatException e) {
+      throw new IllegalStateException("Open API 응답 totalCount 형식이 올바르지 않습니다.");
+    }
+  }
+
   private String text(JsonNode node, String field) {
     String value = node.path(field).asText(null);
     if (value == null || value.isBlank()) {
       return null;
     }
     return value.trim();
-  }
-
-  private BigDecimal decimal(JsonNode node, String field) {
-    String raw = text(node, field);
-    if (raw == null) {
-      return null;
-    }
-    try {
-      return new BigDecimal(raw.replace(",", ""));
-    } catch (NumberFormatException e) {
-      return null;
-    }
-  }
-
-  private Long longValue(JsonNode node, String field) {
-    String raw = text(node, field);
-    if (raw == null) {
-      return null;
-    }
-    try {
-      return Long.valueOf(raw.replace(",", ""));
-    } catch (NumberFormatException e) {
-      return null;
-    }
   }
 
   private LocalDate date(JsonNode node, String field) {
@@ -177,7 +165,30 @@ public class IndexDataOpenApiClient {
     }
   }
 
-  // 설정파일 예외처리
+  private BigDecimal decimal(JsonNode node, String field) {
+    String raw = text(node, field);
+    if (raw == null) {
+      return null;
+    }
+    try {
+      return new BigDecimal(raw);
+    } catch (NumberFormatException e) {
+      return null;
+    }
+  }
+
+  private Long longValue(JsonNode node, String field) {
+    String raw = text(node, field);
+    if (raw == null) {
+      return null;
+    }
+    try {
+      return Long.valueOf(raw);
+    } catch (NumberFormatException e) {
+      return null;
+    }
+  }
+
   private void validateConfig() {
     if (baseUrl == null || baseUrl.isBlank()) {
       throw new IllegalStateException("open-api.stock-index.base-url 설정이 필요합니다.");
@@ -190,7 +201,6 @@ public class IndexDataOpenApiClient {
     }
   }
 
-  // Date값 예외처리
   private void validateRequestDate(LocalDate fromDate, LocalDate toDate) {
     if (fromDate == null || toDate == null) {
       throw new IllegalArgumentException("대상 날짜(fromDate, toDate)는 필수입니다.");

@@ -76,12 +76,7 @@ public class IndexInfoOpenApiClient {
         throw new IllegalStateException("Open API 응답에 body가 없습니다.");
       }
 
-      JsonNode totalCountNode = body.path("totalCount");
-      if (totalCountNode.isMissingNode() || totalCountNode.isNull()) {
-        throw new IllegalStateException("Open API 응답에 totalCount가 없습니다.");
-      }
-      totalCount = totalCountNode.asInt();
-
+      totalCount = parseTotalCount(body.path("totalCount"));
       if (totalCount == 0) {
         break;
       }
@@ -127,6 +122,18 @@ public class IndexInfoOpenApiClient {
         integer(node, "epyItmsCnt"),
         date(node, "basPntm"),
         decimal(node, "basIdx"));
+  }
+
+  private int parseTotalCount(JsonNode totalCountNode) {
+    String raw = totalCountNode.asText(null);
+    if (raw == null || raw.isBlank()) {
+      throw new IllegalStateException("Open API 응답에 totalCount가 없습니다.");
+    }
+    try {
+      return Integer.parseInt(raw.trim());
+    } catch (NumberFormatException e) {
+      throw new IllegalStateException("Open API 응답 totalCount 형식이 올바르지 않습니다.");
+    }
   }
 
   // 문자열 변환, 공백 제거, null/공백 정리
