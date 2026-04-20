@@ -3,9 +3,18 @@ package com.codeit.findex.domain.indexdata.service;
 import com.codeit.findex.domain.indexdata.dto.IndexDataFavoriteResponse;
 import com.codeit.findex.domain.indexdata.dto.IndexDataMapper;
 import com.codeit.findex.domain.indexdata.dto.request.IndexDataUpdateRequest;
+import com.codeit.findex.domain.indexdata.dto.request.PeriodType;
+import com.codeit.findex.domain.indexdata.dto.response.ChartDataPoint;
+import com.codeit.findex.domain.indexdata.dto.response.IndexChartResponse;
 import com.codeit.findex.domain.indexdata.dto.response.IndexDataResponse;
 import com.codeit.findex.domain.indexdata.entity.IndexData;
 import com.codeit.findex.domain.indexdata.repository.IndexDataRepository;
+import com.codeit.findex.domain.indexinfo.entity.IndexInfo;
+import com.codeit.findex.domain.indexinfo.repository.IndexInfoRepository;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +28,74 @@ import org.springframework.transaction.annotation.Transactional;
 public class IndexDataService {
 
   private final IndexDataRepository indexDataRepository;
+  private final IndexInfoRepository indexInfoRepository;
   private final IndexDataMapper indexDataMapper;
+
+  public IndexChartResponse getChart(Long indexInfoId, PeriodType periodType) {
+    IndexInfo indexInfo = indexInfoRepository.findById(indexInfoId)
+        .orElseThrow(() -> new IllegalArgumentException("해당 지수 정보가 없습니다. id=" + indexInfoId));
+
+    LocalDate endDate = LocalDate.now();
+    LocalDate startDate = switch (periodType) {
+      case MONTHLY -> endDate.minusMonths(1);
+      case QUARTERLY ->  endDate.minusMonths(3);
+      case YEARLY -> endDate.minusYears(1);
+    };
+
+    // 이동평균선 20일 계산을 위해 이전 40일치 데이터 여유분 확보
+    LocalDate fetchStartDate = startDate.minusDays(40);
+    List<IndexData> fetchedData = indexDataRepository
+        .findByIndexInfoIdAndBaseDateBetweenOrderByBaseDateAsc(indexInfoId, fetchStartDate, endDate);
+
+    List<ChartDataPoint> dataPoints = new ArrayList<>();
+    List<ChartDataPoint> ma5DataPoints = new ArrayList<>();
+    List<ChartDataPoint> ma20DataPoints = new ArrayList<>();
+
+    for (int i = 0; i < fetchedData.size(); i++) {
+      IndexData current = fetchedData.get(i);
+      LocalDate currentDate = current.getBaseDate();
+
+      // 5일 이동평균선 계산
+      BigDecimal ma5 = null;
+      if (i >= 4) {
+        BigDecimal sum5 = BigDecimal.ZERO;
+        for (int j = i -4; j < i; j++) {
+          sum5 = sum5.add(fetchedData.get(j).getClosingPrice());
+        }
+        ma5 = sum5.divide(BigDecimal.valueOf(5), 2, RoundingMode.HALF_UP);
+      }
+
+      // 20일 이동평균선 계산
+      BigDecimal ma20 = null;
+      if (i >= 19) {
+        BigDecimal sum20 = BigDecimal.ZERO;
+        for (int j = i - 19; j < i; j++) {
+          sum20 = sum20.add(fetchedData.get(j).getClosingPrice());
+        }
+        ma20 = sum20.divide(BigDecimal.valueOf(20), 2, RoundingMode.HALF_UP);
+      }
+
+      // 조회 결과는 요청된 시작일(startDate) 데이터부터만 차트 결과로 반환
+      if (!currentDate.isBefore(startDate)) {
+        dataPoints.add(new ChartDataPoint(currentDate, current.getClosingPrice()));
+        if (ma5 != null) {
+          ma5DataPoints.add(new ChartDataPoint(currentDate, ma5));
+          }
+        if (ma20 != null) {
+          ma20DataPoints.add(new ChartDataPoint(currentDate, ma20));
+        }
+      }
+    }
+    return  new IndexChartResponse(
+        indexInfo.getId(),
+        indexInfo.getIndexClassification(),
+        indexInfo.getIndexName(),
+        periodType,
+        dataPoints,
+        ma5DataPoints,
+        ma20DataPoints
+    );
+  }
 
   public List<IndexDataFavoriteResponse> getFavoritePerformances() {
     List<IndexData> favoriteIndexDataList =
