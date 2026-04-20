@@ -3,6 +3,7 @@ package com.codeit.findex.domain.syncjob.service;
 import com.codeit.findex.domain.common.enums.JobType;
 import com.codeit.findex.domain.common.enums.SourceType;
 import com.codeit.findex.domain.common.enums.SyncResult;
+import com.codeit.findex.domain.indexdata.repository.IndexDataRepository;
 import com.codeit.findex.domain.indexinfo.entity.IndexInfo;
 import com.codeit.findex.domain.indexinfo.repository.IndexInfoRepository;
 import com.codeit.findex.domain.syncjob.client.IndexInfoOpenApiClient;
@@ -31,6 +32,7 @@ public class SyncJobService {
   private final IndexInfoSyncJobMapper indexInfoSyncJobMapper;
   private final SyncJobRepository syncJobRepository;
   private final IndexInfoRepository indexInfoRepository;
+  private final IndexDataRepository indexDataRepository;
 
   @Transactional
   public List<IndexInfoSyncJobResponse> syncIndexInfos(String worker) {
