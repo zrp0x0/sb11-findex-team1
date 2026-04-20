@@ -3,12 +3,10 @@ package com.codeit.findex.domain.indexinfo.service;
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoCreateRequest;
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoResponse;
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoMapper;
-import com.codeit.findex.domain.indexinfo.dto.IndexInfoSummaryResponse;
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoUpdateRequest;
 import com.codeit.findex.domain.indexinfo.entity.IndexInfo;
 import com.codeit.findex.domain.indexinfo.repository.IndexInfoRepository;
 import jakarta.persistence.EntityNotFoundException;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,10 +50,6 @@ public class IndexInfoService {
             .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("지수 정보를 찾을 수 없습니다 ID: " + id));
     return indexInfoMapper.toIndexInfoResponse(indexInfo);
-  }
-
-  public List<IndexInfoSummaryResponse> findAllIndexInfoSummaries() {
-    return indexInfoRepository.findAllSummaries();
   }
 
   @Transactional
