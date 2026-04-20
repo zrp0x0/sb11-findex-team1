@@ -18,7 +18,7 @@ public record IndexChartResponse(
     PeriodType periodType,
 
     @Schema(description = "차트 원본 데이터(종가) 목록")
-    List<ChartDataPoint> dataPints,
+    List<ChartDataPoint> dataPoints,
 
     @Schema(description = "5일 이동평균선 데이터 목록")
     List<ChartDataPoint> ma5DataPoints,
