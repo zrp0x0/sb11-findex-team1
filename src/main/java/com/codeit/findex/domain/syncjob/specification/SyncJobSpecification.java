@@ -22,7 +22,8 @@ public class SyncJobSpecification {
         .and(hasWorker(request.worker()))
         .and(jobTimeFrom(request.jobTimeFrom()))
         .and(jobTimeTo(request.jobTimeTo()))
-        .and(hasResult(request.status()));
+        .and(hasResult(request.status()))
+        .and(afterCursor(request));
   }
 
   public static Specification<SyncJob> hasJobType(JobType jobType) {
@@ -71,5 +72,61 @@ public class SyncJobSpecification {
   public static Specification<SyncJob> hasResult(SyncResult result) {
     return (root, query, criteriaBuilder) ->
         result == null ? null : criteriaBuilder.equal(root.get("result"), result);
+  }
+
+  public static Specification<SyncJob> afterCursor(SyncJobListRequest request) {
+    String cursor = request.cursor();
+    Long idAfter = request.idAfter();
+
+    if (cursor == null || idAfter == null) {
+      return null;
+    }
+
+    String sortField = request.sortField();
+    boolean isDesc = "desc".equalsIgnoreCase(request.sortDirection());
+
+    return (root, query, cb) -> {
+      if ("targetDate".equals(sortField)) {
+        LocalDate cursorDate = LocalDate.parse(cursor);
+
+        if (isDesc) {
+          return cb.or(
+              cb.lessThan(root.get("targetDate"), cursorDate),
+              cb.and(
+                  cb.equal(root.get("targetDate"), cursorDate),
+                  cb.greaterThan(root.get("id"), idAfter)
+              )
+          );
+        }
+
+        return cb.or(
+            cb.greaterThan(root.get("targetDate"), cursorDate),
+            cb.and(
+                cb.equal(root.get("targetDate"), cursorDate),
+                cb.greaterThan(root.get("id"), idAfter)
+            )
+        );
+      }
+
+      LocalDateTime cursorDateTime = LocalDateTime.parse(cursor);
+
+      if (isDesc) {
+        return cb.or(
+            cb.lessThan(root.get("jobTime"), cursorDateTime),
+            cb.and(
+                cb.equal(root.get("jobTime"), cursorDateTime),
+                cb.greaterThan(root.get("id"), idAfter)
+            )
+        );
+      }
+
+      return cb.or(
+          cb.greaterThan(root.get("jobTime"), cursorDateTime),
+          cb.and(
+              cb.equal(root.get("jobTime"), cursorDateTime),
+              cb.greaterThan(root.get("id"), idAfter)
+          )
+      );
+    };
   }
 }
