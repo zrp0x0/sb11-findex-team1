@@ -24,7 +24,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/index-datas") // 복수형 사용하도록 수정
+@RequestMapping("/api/index-data") // 복수형 사용하도록 수정
 @RequiredArgsConstructor
 @Tag(name = "지수 데이터 API", description = "지수 데이터 관리 API")
 public class IndexDataController {
