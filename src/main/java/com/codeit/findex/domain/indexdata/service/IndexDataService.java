@@ -197,7 +197,6 @@ public class IndexDataService {
     return limit;
   }
 
-  // ✅ 내 코드: getChart - j <= i 버전이 정확함
   public IndexChartResponse getChart(Long indexInfoId, PeriodType periodType) {
     IndexInfo indexInfo = indexInfoRepository.findById(indexInfoId)
         .orElseThrow(() -> new IllegalArgumentException("해당 지수 정보가 없습니다. id=" + indexInfoId));
