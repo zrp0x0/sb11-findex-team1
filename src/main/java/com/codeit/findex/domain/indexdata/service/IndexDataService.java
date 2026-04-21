@@ -25,6 +25,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import com.codeit.findex.domain.indexdata.dto.request.IndexDataCreateRequest;
+import jakarta.persistence.EntityNotFoundException;
+
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -275,5 +279,24 @@ public class IndexDataService {
         request.marketTotalAmount()
     );
     return indexDataMapper.toResponse(indexData);
+
   }
+  @Transactional
+  public IndexDataResponse create(IndexDataCreateRequest request) {
+    IndexInfo indexInfo = indexInfoRepository.findById(request.indexInfoId())
+            .orElseThrow(() -> new EntityNotFoundException("해당 지수 정보를 찾을 수 없습니다. id=" + request.indexInfoId()));
+
+    if (indexDataRepository.existsByIndexInfo_IdAndBaseDate(request.indexInfoId(), request.baseDate())) {
+      throw new IllegalArgumentException("해당 날짜의 데이터가 이미 존재합니다.");
+    }
+
+    IndexData indexData = indexDataMapper.toEntity(request, indexInfo);
+    IndexData savedData = indexDataRepository.save(indexData);
+
+    return indexDataMapper.toResponse(savedData);
+  }
+
+
+
+
 }

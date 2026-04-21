@@ -31,4 +31,6 @@ public interface IndexDataRepository extends JpaRepository<IndexData, Long> {
   @EntityGraph(attributePaths = "indexInfo")
   Optional<IndexData> findFirstByIndexInfoIdAndBaseDateLessThanEqualOrderByBaseDateDesc(
       Long indexInfoId, LocalDate baseDate);
+  // IndexDataRepository.java 내부에 추가
+  boolean existsByIndexInfo_IdAndBaseDate(Long indexInfoId, java.time.LocalDate baseDate);
 }
