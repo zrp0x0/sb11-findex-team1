@@ -321,7 +321,7 @@ public class IndexDataService {
     IndexData indexData =
         indexDataRepository
             .findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("해당 지수 데이터가 없습니다. id=" + id));
+            .orElseThrow(() -> new EntityNotFoundException("수정할 지수 데이터를 찾을 수 없습니다. id=" + id));
 
     indexData.update(
         request.marketPrice(),
