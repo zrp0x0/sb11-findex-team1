@@ -99,5 +99,15 @@ public class IndexDataController {
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
-
+  @Operation(
+          summary = "지수 데이터 삭제",
+          description = "특정 지수 데이터를 삭제합니다."
+  )
+  @DeleteMapping("/{id}")
+  public ResponseEntity<Void> delete(
+          @Parameter(description = "지수 데이터 ID") @PathVariable Long id
+  ) {
+    indexDataService.delete(id);
+    return ResponseEntity.noContent().build();
+  }
 }
