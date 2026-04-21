@@ -22,3 +22,10 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+# OPEN API url, key, num-of-rows
+open-api:
+  stock-index:
+    base-url: https://apis.data.go.kr/1160100/service/GetMarketIndexInfoService/getStockMarketIndex
+    service-key: ${OPEN_API_STOCK_INDEX_SERVICE_KEY:}
+    num-of-rows: 100
