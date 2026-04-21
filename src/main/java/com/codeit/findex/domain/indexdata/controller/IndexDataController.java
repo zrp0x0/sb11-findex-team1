@@ -119,4 +119,6 @@ public class IndexDataController {
     indexDataService.delete(id);
     return ResponseEntity.noContent().build();
   }
+
+
 }
