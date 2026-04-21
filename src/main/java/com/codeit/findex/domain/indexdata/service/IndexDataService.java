@@ -1,5 +1,6 @@
 package com.codeit.findex.domain.indexdata.service;
 
+import com.codeit.findex.domain.common.enums.PerformancePeriodType;
 import com.codeit.findex.domain.indexdata.dto.IndexDataFavoriteResponse;
 import com.codeit.findex.domain.indexdata.dto.IndexDataMapper;
 import com.codeit.findex.domain.indexdata.dto.request.IndexDataUpdateRequest;
@@ -39,87 +40,74 @@ public class IndexDataService {
   private final IndexInfoRepository indexInfoRepository;
   private final IndexDataMapper indexDataMapper;
 
-  public IndexChartResponse getChart(Long indexInfoId, PeriodType periodType) {
-    IndexInfo indexInfo = indexInfoRepository.findById(indexInfoId)
-        .orElseThrow(() -> new IllegalArgumentException("해당 지수 정보가 없습니다. id=" + indexInfoId));
-
-    LocalDate endDate = LocalDate.now();
-    LocalDate startDate = switch (periodType) {
-      case MONTHLY -> endDate.minusMonths(1);
-      case QUARTERLY ->  endDate.minusMonths(3);
-      case YEARLY -> endDate.minusYears(1);
-    };
-
-    // 이동평균선 20일 계산을 위해 이전 40일치 데이터 여유분 확보
-    LocalDate fetchStartDate = startDate.minusDays(40);
-    List<IndexData> fetchedData = indexDataRepository
-        .findByIndexInfoIdAndBaseDateBetweenOrderByBaseDateAsc(indexInfoId, fetchStartDate, endDate);
-
-    List<ChartDataPoint> dataPoints = new ArrayList<>();
-    List<ChartDataPoint> ma5DataPoints = new ArrayList<>();
-    List<ChartDataPoint> ma20DataPoints = new ArrayList<>();
-
-    for (int i = 0; i < fetchedData.size(); i++) {
-      IndexData current = fetchedData.get(i);
-      LocalDate currentDate = current.getBaseDate();
-
-      // 5일 이동평균선 계산
-      BigDecimal ma5 = null;
-      if (i >= 4) {
-        BigDecimal sum5 = BigDecimal.ZERO;
-        for (int j = i - 4; j <= i; j++) {
-          sum5 = sum5.add(fetchedData.get(j).getClosingPrice());
-        }
-        ma5 = sum5.divide(BigDecimal.valueOf(5), 2, RoundingMode.HALF_UP);
-      }
-
-      // 20일 이동평균선 계산
-      BigDecimal ma20 = null;
-      if (i >= 19) {
-        BigDecimal sum20 = BigDecimal.ZERO;
-        for (int j = i - 19; j <= i; j++) {
-          sum20 = sum20.add(fetchedData.get(j).getClosingPrice());
-        }
-        ma20 = sum20.divide(BigDecimal.valueOf(20), 2, RoundingMode.HALF_UP);
-      }
-
-      // 조회 결과는 요청된 시작일(startDate) 데이터부터만 차트 결과로 반환
-      if (!currentDate.isBefore(startDate)) {
-        dataPoints.add(new ChartDataPoint(currentDate, current.getClosingPrice()));
-        if (ma5 != null) {
-          ma5DataPoints.add(new ChartDataPoint(currentDate, ma5));
-          }
-        if (ma20 != null) {
-          ma20DataPoints.add(new ChartDataPoint(currentDate, ma20));
-        }
-      }
-    }
-    return  new IndexChartResponse(
-        indexInfo.getId(),
-        indexInfo.getIndexClassification(),
-        indexInfo.getIndexName(),
-        periodType,
-        dataPoints,
-        ma5DataPoints,
-        ma20DataPoints
-    );
-  }
-
-  public List<IndexDataFavoriteResponse> getFavoritePerformances() {
+  // ✅ 팀원 코드: PerformancePeriodType 파라미터 받는 버전 사용
+  public List<IndexDataFavoriteResponse> getFavoritePerformances(
+      PerformancePeriodType performancePeriodType) {
     List<IndexData> favoriteIndexDataList =
         indexDataRepository.findByIndexInfo_FavoriteTrueOrderByIndexInfoIdAscBaseDateDesc();
 
-    // 지수별 최신 1건만 유지 - 최신 날짜
-    Map<Long, IndexData> latestByIndex = new LinkedHashMap<>();
+    Map<Long, List<IndexData>> groupedByIndex = new LinkedHashMap<>();
     for (IndexData favoriteIndexData : favoriteIndexDataList) {
-      latestByIndex.putIfAbsent(favoriteIndexData.getIndexInfo().getId(), favoriteIndexData);
+      Long indexInfoId = favoriteIndexData.getIndexInfo().getId();
+      groupedByIndex.computeIfAbsent(indexInfoId, key -> new ArrayList<>()).add(favoriteIndexData);
     }
 
-    return latestByIndex.values().stream()
-        .map(indexDataMapper::toIndexDataFavoriteResponse)
-        .toList();
+    List<IndexDataFavoriteResponse> responses = new ArrayList<>();
+    for (List<IndexData> indexDataList : groupedByIndex.values()) {
+      IndexData latest = indexDataList.get(0);
+
+      if (latest.getClosingPrice() == null || latest.getBaseDate() == null) {
+        continue;
+      }
+
+      LocalDate targetDate = getTargetDate(latest.getBaseDate(), performancePeriodType);
+      IndexData compareData = findCompareData(indexDataList, targetDate);
+
+      if (compareData == null
+          || compareData.getClosingPrice() == null
+          || compareData.getBaseDate() == null) {
+        continue;
+      }
+
+      BigDecimal currentPrice = latest.getClosingPrice();
+      BigDecimal beforePrice = compareData.getClosingPrice();
+      BigDecimal versus = currentPrice.subtract(beforePrice);
+
+      BigDecimal fluctuationRate = null;
+      if (beforePrice.compareTo(BigDecimal.ZERO) != 0) {
+        fluctuationRate =
+            versus
+                .divide(beforePrice, 6, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(2, RoundingMode.HALF_UP);
+      }
+
+      responses.add(
+          indexDataMapper.toIndexDataFavoriteResponse(
+              latest, versus, fluctuationRate, currentPrice, beforePrice));
+    }
+    return responses;
   }
 
+  private LocalDate getTargetDate(LocalDate latestDate, PerformancePeriodType periodType) {
+    return switch (periodType) {
+      case DAILY -> latestDate.minusDays(1);
+      case WEEKLY -> latestDate.minusWeeks(1);
+      case MONTHLY -> latestDate.minusMonths(1);
+    };
+  }
+
+  private IndexData findCompareData(List<IndexData> indexDataList, LocalDate targetDate) {
+    for (int i = 1; i < indexDataList.size(); i++) {
+      IndexData indexData = indexDataList.get(i);
+      if (indexData.getBaseDate() != null && !indexData.getBaseDate().isAfter(targetDate)) {
+        return indexData;
+      }
+    }
+    return null;
+  }
+
+  // ✅ 내 코드: getPerformanceRank 유지
   public List<RankedIndexPerformanceResponse> getPerformanceRank(
       IndexPerformanceRankRequest request) {
     LocalDate currentDate = indexDataRepository.findTopByOrderByBaseDateDesc()
@@ -133,8 +121,7 @@ public class IndexDataService {
       toIndexPerformance(currentData, targetDate).ifPresent(performances::add);
     }
 
-    performances.sort(
-        Comparator.comparing(IndexPerformanceResponse::fluctuationRate).reversed());
+    performances.sort(Comparator.comparing(IndexPerformanceResponse::fluctuationRate).reversed());
 
     int limit = resolveRankLimit(request.limit());
     List<RankedIndexPerformanceResponse> ranks = new ArrayList<>();
@@ -210,6 +197,68 @@ public class IndexDataService {
     return limit;
   }
 
+  // ✅ 내 코드: getChart - j <= i 버전이 정확함
+  public IndexChartResponse getChart(Long indexInfoId, PeriodType periodType) {
+    IndexInfo indexInfo = indexInfoRepository.findById(indexInfoId)
+        .orElseThrow(() -> new IllegalArgumentException("해당 지수 정보가 없습니다. id=" + indexInfoId));
+
+    LocalDate endDate = LocalDate.now();
+    LocalDate startDate = switch (periodType) {
+      case MONTHLY -> endDate.minusMonths(1);
+      case QUARTERLY -> endDate.minusMonths(3);
+      case YEARLY -> endDate.minusYears(1);
+    };
+
+    LocalDate fetchStartDate = startDate.minusDays(40);
+    List<IndexData> fetchedData = indexDataRepository
+        .findByIndexInfoIdAndBaseDateBetweenOrderByBaseDateAsc(indexInfoId, fetchStartDate, endDate);
+
+    List<ChartDataPoint> dataPoints = new ArrayList<>();
+    List<ChartDataPoint> ma5DataPoints = new ArrayList<>();
+    List<ChartDataPoint> ma20DataPoints = new ArrayList<>();
+
+    for (int i = 0; i < fetchedData.size(); i++) {
+      IndexData current = fetchedData.get(i);
+      LocalDate currentDate = current.getBaseDate();
+
+      BigDecimal ma5 = null;
+      if (i >= 4) {
+        BigDecimal sum5 = BigDecimal.ZERO;
+        for (int j = i - 4; j <= i; j++) {
+          sum5 = sum5.add(fetchedData.get(j).getClosingPrice());
+        }
+        ma5 = sum5.divide(BigDecimal.valueOf(5), 2, RoundingMode.HALF_UP);
+      }
+
+      BigDecimal ma20 = null;
+      if (i >= 19) {
+        BigDecimal sum20 = BigDecimal.ZERO;
+        for (int j = i - 19; j <= i; j++) {
+          sum20 = sum20.add(fetchedData.get(j).getClosingPrice());
+        }
+        ma20 = sum20.divide(BigDecimal.valueOf(20), 2, RoundingMode.HALF_UP);
+      }
+
+      if (!currentDate.isBefore(startDate)) {
+        dataPoints.add(new ChartDataPoint(currentDate, current.getClosingPrice()));
+        if (ma5 != null) {
+          ma5DataPoints.add(new ChartDataPoint(currentDate, ma5));
+        }
+        if (ma20 != null) {
+          ma20DataPoints.add(new ChartDataPoint(currentDate, ma20));
+        }
+      }
+    }
+    return new IndexChartResponse(
+        indexInfo.getId(),
+        indexInfo.getIndexClassification(),
+        indexInfo.getIndexName(),
+        periodType,
+        dataPoints,
+        ma5DataPoints,
+        ma20DataPoints
+    );
+  }
 
   @Transactional
   public IndexDataResponse update(Long id, IndexDataUpdateRequest request) {

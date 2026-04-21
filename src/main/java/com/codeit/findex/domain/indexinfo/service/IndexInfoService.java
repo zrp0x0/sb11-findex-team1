@@ -1,5 +1,6 @@
 package com.codeit.findex.domain.indexinfo.service;
 
+import com.codeit.findex.domain.indexinfo.dto.*;
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoCreateRequest;
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoResponse;
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoMapper;
@@ -11,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -18,6 +21,50 @@ public class IndexInfoService {
 
   private final IndexInfoRepository indexInfoRepository;
   private final IndexInfoMapper indexInfoMapper;
+
+  public IndexInfoCursorResponse<IndexInfoResponse> getIndexInfos(IndexInfoSearchCondition condition) {
+
+    // 1. 데이터 목록 조회 (limit + 1)
+    List<IndexInfo> entities = indexInfoRepository.findAllByCondition(condition);
+
+    // 2. 전체 개수 카운트
+    long totalElements = indexInfoRepository.countByCondition(condition);
+
+    // 3. 다음 페이지 여부 계산
+    boolean hasNext = entities.size() > condition.getSize();
+    if (hasNext) {
+      entities.remove(condition.getSize().intValue());
+    }
+
+    // 4. 다음 페이지 요청용 커서 값 추출
+    String nextCursor = null;
+    Long nextIdAfter = null;
+    if (!entities.isEmpty()) {
+      IndexInfo lastItem = entities.get(entities.size() - 1);
+      nextIdAfter = lastItem.getId();
+
+      nextCursor = switch (condition.getSortField()) {
+        case "indexName" -> lastItem.getIndexName();
+        case "employedItemsCount" -> String.valueOf(lastItem.getEmployedItemsCount());
+        default -> lastItem.getIndexClassification();
+      };
+    }
+
+    // 5. Entity -> Dto 변환
+    List<IndexInfoResponse> dtoList = entities.stream()
+            .map(indexInfoMapper::toIndexInfoResponse)
+            .toList();
+
+    // 6. 응답 객체 조립 후 반환
+    return new IndexInfoCursorResponse<>(
+            dtoList,
+            nextCursor,
+            nextIdAfter,
+            condition.getSize(),
+            totalElements,
+            hasNext
+    );
+  }
 
   @Transactional
   public IndexInfoResponse createIndexInfo(IndexInfoCreateRequest request) {
