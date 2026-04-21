@@ -1,5 +1,7 @@
 package com.codeit.findex.domain.syncjob.service;
 
+import com.codeit.findex.domain.autosyncconfig.entity.AutoSyncConfig;
+import com.codeit.findex.domain.autosyncconfig.service.AutoSyncConfigService;
 import com.codeit.findex.domain.common.enums.JobType;
 import com.codeit.findex.domain.common.enums.SourceType;
 import com.codeit.findex.domain.common.enums.SyncResult;
@@ -11,22 +13,22 @@ import com.codeit.findex.domain.syncjob.client.IndexDataOpenApiClient;
 import com.codeit.findex.domain.syncjob.client.IndexInfoOpenApiClient;
 import com.codeit.findex.domain.syncjob.client.OpenApiIndexDataResponse;
 import com.codeit.findex.domain.syncjob.client.OpenApiIndexInfoResponse;
-import com.codeit.findex.domain.syncjob.dto.indexdata.IndexDataSyncJobMapper;
-import com.codeit.findex.domain.syncjob.dto.indexdata.IndexDataSyncJobResponse;
-import com.codeit.findex.domain.syncjob.dto.indexinfo.IndexInfoSyncJobMapper;
-import com.codeit.findex.domain.syncjob.dto.indexinfo.IndexInfoSyncJobResponse;
 import com.codeit.findex.domain.syncjob.dto.SyncJobListRequest;
 import com.codeit.findex.domain.syncjob.dto.SyncJobMapper;
 import com.codeit.findex.domain.syncjob.dto.SyncJobPageResponse;
 import com.codeit.findex.domain.syncjob.dto.SyncJobResponse;
+import com.codeit.findex.domain.syncjob.dto.indexdata.IndexDataSyncJobMapper;
+import com.codeit.findex.domain.syncjob.dto.indexdata.IndexDataSyncJobResponse;
+import com.codeit.findex.domain.syncjob.dto.indexinfo.IndexInfoSyncJobMapper;
+import com.codeit.findex.domain.syncjob.dto.indexinfo.IndexInfoSyncJobResponse;
 import com.codeit.findex.domain.syncjob.entity.SyncJob;
 import com.codeit.findex.domain.syncjob.repository.SyncJobRepository;
+import com.codeit.findex.domain.syncjob.specification.SyncJobSpecification;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
-import com.codeit.findex.domain.syncjob.specification.SyncJobSpecification;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -42,17 +44,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class SyncJobService {
 
   private static final int MAX_LOOKBACK_DAYS = 30;
+  private static final String SCHEDULER_WORKER = "scheduler";
 
   private final IndexInfoOpenApiClient indexInfoOpenApiClient;
   private final IndexDataOpenApiClient indexDataOpenApiClient;
 
   private final IndexInfoSyncJobMapper indexInfoSyncJobMapper;
   private final IndexDataSyncJobMapper indexDataSyncJobMapper;
+  private final SyncJobMapper syncJobMapper;
 
   private final SyncJobRepository syncJobRepository;
   private final IndexInfoRepository indexInfoRepository;
   private final IndexDataRepository indexDataRepository;
-  private final SyncJobMapper syncJobMapper;
+  private final AutoSyncConfigService autoSyncConfigService;
 
   @Transactional
   public List<IndexInfoSyncJobResponse> syncIndexInfos(String worker) {
@@ -333,6 +337,81 @@ public class SyncJobService {
     if (row.baseDate() == null) {
       throw new IllegalStateException("기준일이 없습니다.");
     }
+  }
+
+  // 배치 진입
+  @Transactional
+  public void runAutoSyncIndexDataBatch() {
+    List<AutoSyncConfig> enabledConfigs = autoSyncConfigService.getEnabledAutoSyncConfigs();
+
+    for (AutoSyncConfig autoSyncConfig : enabledConfigs) {
+      try {
+        runAutoSyncForIndex(autoSyncConfig);
+      } catch (RuntimeException e) {
+        saveAutoSyncFailedJob(autoSyncConfig, LocalDate.now(), SCHEDULER_WORKER);
+      }
+    }
+  }
+
+  // 대상 실행
+  @Transactional
+  protected void runAutoSyncForIndex(AutoSyncConfig autoSyncConfig) {
+    IndexInfo indexInfo = autoSyncConfig.getIndexInfo();
+
+    LocalDate lastSyncedDate = getLastSyncedTargetDate(indexInfo.getId());
+    LocalDate syncStartDate = calculateSyncStartDate(lastSyncedDate);
+    LocalDate syncEndDate = LocalDate.now();
+
+    if (syncStartDate.isAfter(syncEndDate)) {
+      return;
+    }
+
+    syncIndexData(
+        List.of(indexInfo.getId()),
+        syncStartDate,
+        syncEndDate,
+        SCHEDULER_WORKER
+    );
+  }
+
+  // 마지막 조회
+  protected LocalDate getLastSyncedTargetDate(Long indexInfoId) {
+    return syncJobRepository
+        .findTopByJobTypeAndIndexInfo_IdAndResultOrderByTargetDateDesc(
+            JobType.INDEX_DATA,
+            indexInfoId,
+            SyncResult.SUCCESS
+        )
+        .map(SyncJob::getTargetDate)
+        .orElse(null);
+  }
+
+  // 시작일 계산
+  protected LocalDate calculateSyncStartDate(LocalDate lastSyncedDate) {
+    if (lastSyncedDate == null) {
+      return LocalDate.now().minusDays(MAX_LOOKBACK_DAYS);
+    }
+    return lastSyncedDate.plusDays(1);
+  }
+
+  // 실패 저장
+  @Transactional
+  protected void saveAutoSyncFailedJob(
+      AutoSyncConfig autoSyncConfig,
+      LocalDate targetDate,
+      String worker
+  ) {
+    SyncJob failedJob = SyncJob.create(
+        null,
+        JobType.INDEX_DATA,
+        autoSyncConfig.getIndexInfo(),
+        targetDate,
+        worker,
+        LocalDateTime.now(),
+        SyncResult.FAILED
+    );
+
+    syncJobRepository.save(failedJob);
   }
 
   public SyncJobPageResponse getSyncJobs(SyncJobListRequest request) {

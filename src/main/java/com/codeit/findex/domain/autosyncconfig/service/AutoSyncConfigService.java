@@ -132,4 +132,10 @@ public class AutoSyncConfigService {
     autoSyncConfig.updateEnabled(request.enabled());
     return autoSyncConfigMapper.toAutoSyncConfigResponse(autoSyncConfig);
   }
+
+  // 대상 조회 메서드
+  public List<AutoSyncConfig> getEnabledAutoSyncConfigs() {
+    return autoSyncConfigRepository.findByEnabled(true, Sort.by(Sort.Direction.ASC, "id"));
+  }
+
 }
