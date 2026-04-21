@@ -13,9 +13,8 @@ import org.springframework.web.client.RestClient;
 
 @Component
 @RequiredArgsConstructor
-public class IndexInfoOpenApiClient {
+public class IndexDataOpenApiClient {
 
-  // yyyyMMdd형식
   private static final DateTimeFormatter BASIC_DATE = DateTimeFormatter.BASIC_ISO_DATE;
 
   private final RestClient.Builder restClientBuilder;
@@ -29,14 +28,16 @@ public class IndexInfoOpenApiClient {
   @Value("${open-api.stock-index.num-of-rows:100}")
   private int numOfRows;
 
-  public List<OpenApiIndexInfoResponse> fetchIndexInfos(LocalDate baseDate) {
+  public List<OpenApiIndexDataResponse> fetchIndexData(
+      LocalDate fromDate, LocalDate toDate, String indexName) {
     validateConfig();
+    validateRequestDate(fromDate, toDate);
 
     RestClient restClient = restClientBuilder.baseUrl(baseUrl).build();
 
     int pageNo = 1;
     int totalCount = Integer.MAX_VALUE;
-    List<OpenApiIndexInfoResponse> results = new ArrayList<>();
+    List<OpenApiIndexDataResponse> results = new ArrayList<>();
 
     while ((pageNo - 1) * numOfRows < totalCount) {
       final int currentPageNo = pageNo;
@@ -50,18 +51,18 @@ public class IndexInfoOpenApiClient {
                         .queryParam("serviceKey", serviceKey)
                         .queryParam("resultType", "json")
                         .queryParam("pageNo", currentPageNo)
-                        .queryParam("numOfRows", numOfRows);
+                        .queryParam("numOfRows", numOfRows)
+                        .queryParam("beginBasDt", fromDate.format(BASIC_DATE))
+                        .queryParam("endBasDt", toDate.format(BASIC_DATE));
 
-                    if (baseDate != null) {
-                      uriBuilder.queryParam("basDt", baseDate.format(BASIC_DATE));
+                    // 지수는 선택조건
+                    if (indexName != null && !indexName.isBlank()) {
+                      uriBuilder.queryParam("idxNm", indexName.trim());
                     }
-
                     return uriBuilder.build();
                   })
               .retrieve()
               .body(JsonNode.class);
-
-      // 응답은 item ⊂ items ⊂ body ⊂ response 구조
       if (root == null || root.isNull()) {
         throw new IllegalStateException("Open API 응답 본문이 비어 있습니다.");
       }
@@ -88,13 +89,13 @@ public class IndexInfoOpenApiClient {
 
       if (itemNode.isArray()) {
         for (JsonNode node : itemNode) {
-          OpenApiIndexInfoResponse parsed = parse(node);
+          OpenApiIndexDataResponse parsed = parse(node);
           if (parsed != null) {
             results.add(parsed);
           }
         }
       } else if (itemNode.isObject()) {
-        OpenApiIndexInfoResponse parsed = parse(itemNode);
+        OpenApiIndexDataResponse parsed = parse(itemNode);
         if (parsed != null) {
           results.add(parsed);
         }
@@ -108,20 +109,28 @@ public class IndexInfoOpenApiClient {
     return results;
   }
 
-  private OpenApiIndexInfoResponse parse(JsonNode node) {
+  private OpenApiIndexDataResponse parse(JsonNode node) {
     String indexClassification = text(node, "idxCsf");
     String indexName = text(node, "idxNm");
+    LocalDate baseDate = date(node, "basDt");
 
-    if (indexClassification == null || indexName == null) {
+    if (indexClassification == null || indexName == null || baseDate == null) {
       return null;
     }
 
-    return new OpenApiIndexInfoResponse(
+    return new OpenApiIndexDataResponse(
         indexClassification,
         indexName,
-        integer(node, "epyItmsCnt"),
-        date(node, "basPntm"),
-        decimal(node, "basIdx"));
+        baseDate,
+        decimal(node, "mkp"),
+        decimal(node, "clpr"),
+        decimal(node, "hipr"),
+        decimal(node, "lopr"),
+        decimal(node, "vs"),
+        decimal(node, "fltRt"),
+        longValue(node, "trqu"),
+        longValue(node, "trPrc"),
+        longValue(node, "lstgMrktTotAmt"));
   }
 
   private int parseTotalCount(JsonNode totalCountNode) {
@@ -136,25 +145,12 @@ public class IndexInfoOpenApiClient {
     }
   }
 
-  // 문자열 변환, 공백 제거, null/공백 정리
   private String text(JsonNode node, String field) {
     String value = node.path(field).asText(null);
     if (value == null || value.isBlank()) {
       return null;
     }
     return value.trim();
-  }
-
-  private Integer integer(JsonNode node, String field) {
-    String raw = text(node, field);
-    if (raw == null) {
-      return null;
-    }
-    try {
-      return Integer.valueOf(raw);
-    } catch (NumberFormatException e) {
-      return null;
-    }
   }
 
   private LocalDate date(JsonNode node, String field) {
@@ -181,7 +177,18 @@ public class IndexInfoOpenApiClient {
     }
   }
 
-  // 설정 값 예외처리
+  private Long longValue(JsonNode node, String field) {
+    String raw = text(node, field);
+    if (raw == null) {
+      return null;
+    }
+    try {
+      return Long.valueOf(raw);
+    } catch (NumberFormatException e) {
+      return null;
+    }
+  }
+
   private void validateConfig() {
     if (baseUrl == null || baseUrl.isBlank()) {
       throw new IllegalStateException("open-api.stock-index.base-url 설정이 필요합니다.");
@@ -191,6 +198,15 @@ public class IndexInfoOpenApiClient {
     }
     if (numOfRows < 1) {
       throw new IllegalStateException("numOfRows는 1 이상이어야 합니다. 현재값: " + numOfRows);
+    }
+  }
+
+  private void validateRequestDate(LocalDate fromDate, LocalDate toDate) {
+    if (fromDate == null || toDate == null) {
+      throw new IllegalArgumentException("대상 날짜(fromDate, toDate)는 필수입니다.");
+    }
+    if (fromDate.isAfter(toDate)) {
+      throw new IllegalArgumentException("fromDate는 toDate보다 이후일 수 없습니다.");
     }
   }
 }
