@@ -1,12 +1,9 @@
 package com.codeit.findex.domain.indexdata.dto.request;
 
-import com.codeit.findex.domain.common.enums.SourceType;
 import jakarta.validation.constraints.PositiveOrZero;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 public record IndexDataUpdateRequest(
-    SourceType sourceType,       // 수집 출처
     @PositiveOrZero(message = "시가는 0 이상이어야 합니다.") BigDecimal marketPrice,
     @PositiveOrZero(message = "종가는 0 이상이어야 합니다.") BigDecimal closingPrice,
     @PositiveOrZero(message = "고가는 0 이상이어야 합니다.") BigDecimal highPrice,

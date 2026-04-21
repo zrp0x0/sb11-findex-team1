@@ -324,7 +324,6 @@ public class IndexDataService {
             .orElseThrow(() -> new IllegalArgumentException("해당 지수 데이터가 없습니다. id=" + id));
 
     indexData.update(
-        request.sourceType(),
         request.marketPrice(),
         request.closingPrice(),
         request.highPrice(),
