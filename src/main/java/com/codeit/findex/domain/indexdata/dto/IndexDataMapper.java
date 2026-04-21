@@ -26,4 +26,6 @@ public interface IndexDataMapper {
 
   @Mapping(source = "indexInfo.id", target = "indexInfoId")
   com.codeit.findex.domain.indexdata.dto.response.IndexDataResponse toResponse(IndexData indexData);
+
+
 }

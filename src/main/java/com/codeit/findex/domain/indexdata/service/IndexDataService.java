@@ -3,6 +3,7 @@ package com.codeit.findex.domain.indexdata.service;
 import com.codeit.findex.domain.common.enums.PerformancePeriodType;
 import com.codeit.findex.domain.indexdata.dto.IndexDataFavoriteResponse;
 import com.codeit.findex.domain.indexdata.dto.IndexDataMapper;
+import com.codeit.findex.domain.indexdata.dto.IndexDataSearchCondition;
 import com.codeit.findex.domain.indexdata.dto.request.IndexDataUpdateRequest;
 import com.codeit.findex.domain.indexdata.dto.request.IndexPerformanceRankRequest;
 import com.codeit.findex.domain.indexdata.dto.request.PeriodType;
@@ -14,6 +15,7 @@ import com.codeit.findex.domain.indexdata.dto.response.IndexPerformanceResponse;
 import com.codeit.findex.domain.indexdata.dto.response.RankedIndexPerformanceResponse;
 import com.codeit.findex.domain.indexdata.entity.IndexData;
 import com.codeit.findex.domain.indexdata.repository.IndexDataRepository;
+import com.codeit.findex.domain.indexinfo.dto.IndexInfoCursorResponse;
 import com.codeit.findex.domain.indexinfo.entity.IndexInfo;
 import com.codeit.findex.domain.indexinfo.repository.IndexInfoRepository;
 import java.math.BigDecimal;
@@ -39,6 +41,53 @@ public class IndexDataService {
   private final IndexDataRepository indexDataRepository;
   private final IndexInfoRepository indexInfoRepository;
   private final IndexDataMapper indexDataMapper;
+
+  public IndexInfoCursorResponse<IndexDataResponse> getIndexDatas(
+      IndexDataSearchCondition condition) {
+
+    // 1. 데이터 조회 (limit + 1)
+    List<IndexData> entities = indexDataRepository.findAllByCondition(condition);
+
+    // 2. 전체 데이터 개수 카운트
+    long totalElements = indexDataRepository.countByCondition(condition);
+
+    // 3. 다음 페이지 여부 확인 및 리스트 자르기
+    boolean hasNext = entities.size() > condition.getSize();
+    if (hasNext) {
+      entities.remove(condition.getSize().intValue());
+    }
+
+    // 4. 다음 페이지 커서 값 추출
+    String nextCursor = null;
+    Long nextIdAfter = null;
+
+    if (hasNext && !entities.isEmpty()) {
+      IndexData lastItem = entities.get(entities.size() - 1);
+      nextIdAfter = lastItem.getId();
+
+      nextCursor =
+          switch (condition.getSortField()) {
+            case "baseDate" -> lastItem.getBaseDate().toString();
+            case "marketPrice" -> lastItem.getMarketPrice().toString();
+            case "closingPrice" -> lastItem.getClosingPrice().toString();
+            case "highPrice" -> lastItem.getHighPrice().toString();
+            case "lowPrice" -> lastItem.getLowPrice().toString();
+            case "versus" -> lastItem.getVersus().toString();
+            case "fluctuationRate" -> lastItem.getFluctuationRate().toString();
+            case "tradingQuantity" -> lastItem.getTradingQuantity().toString();
+            case "tradingPrice" -> lastItem.getTradingPrice().toString();
+            case "marketTotalAmount" -> lastItem.getMarketTotalAmount().toString();
+            default -> lastItem.getBaseDate().toString();
+          };
+    }
+
+    // 5. Entity -> DTO 변환 (기존 MapStruct 활용)
+    List<IndexDataResponse> dtoList = entities.stream().map(indexDataMapper::toResponse).toList();
+
+    // 6. 응답 객체 조립 후 반환
+    return new IndexInfoCursorResponse<>(
+        dtoList, nextCursor, nextIdAfter, condition.getSize(), totalElements, hasNext);
+  }
 
   public List<IndexDataFavoriteResponse> getFavoritePerformances(
       PerformancePeriodType performancePeriodType) {
@@ -108,9 +157,11 @@ public class IndexDataService {
 
   public List<RankedIndexPerformanceResponse> getPerformanceRank(
       IndexPerformanceRankRequest request) {
-    LocalDate currentDate = indexDataRepository.findTopByOrderByBaseDateDesc()
-        .orElseThrow(() -> new IllegalStateException("지수 데이터가 없습니다."))
-        .getBaseDate();
+    LocalDate currentDate =
+        indexDataRepository
+            .findTopByOrderByBaseDateDesc()
+            .orElseThrow(() -> new IllegalStateException("지수 데이터가 없습니다."))
+            .getBaseDate();
     LocalDate targetDate = getRankTargetDate(currentDate, request.periodType());
     List<IndexData> currentDataList = findCurrentData(currentDate, request.indexInfoId());
 
@@ -169,20 +220,21 @@ public class IndexDataService {
 
     BigDecimal currentPrice = currentData.getClosingPrice();
     BigDecimal versus = currentPrice.subtract(beforePrice);
-    BigDecimal fluctuationRate = versus
-        .divide(beforePrice, 6, RoundingMode.HALF_UP)
-        .multiply(BigDecimal.valueOf(100))
-        .setScale(2, RoundingMode.HALF_UP);
+    BigDecimal fluctuationRate =
+        versus
+            .divide(beforePrice, 6, RoundingMode.HALF_UP)
+            .multiply(BigDecimal.valueOf(100))
+            .setScale(2, RoundingMode.HALF_UP);
 
-    return Optional.of(new IndexPerformanceResponse(
-        indexInfo.getId(),
-        indexInfo.getIndexClassification(),
-        indexInfo.getIndexName(),
-        versus,
-        fluctuationRate,
-        currentPrice,
-        beforePrice
-    ));
+    return Optional.of(
+        new IndexPerformanceResponse(
+            indexInfo.getId(),
+            indexInfo.getIndexClassification(),
+            indexInfo.getIndexName(),
+            versus,
+            fluctuationRate,
+            currentPrice,
+            beforePrice));
   }
 
   private int resolveRankLimit(Integer limit) {
@@ -196,19 +248,23 @@ public class IndexDataService {
   }
 
   public IndexChartResponse getChart(Long indexInfoId, PeriodType periodType) {
-    IndexInfo indexInfo = indexInfoRepository.findById(indexInfoId)
-        .orElseThrow(() -> new IllegalArgumentException("해당 지수 정보가 없습니다. id=" + indexInfoId));
+    IndexInfo indexInfo =
+        indexInfoRepository
+            .findById(indexInfoId)
+            .orElseThrow(() -> new IllegalArgumentException("해당 지수 정보가 없습니다. id=" + indexInfoId));
 
     LocalDate endDate = LocalDate.now();
-    LocalDate startDate = switch (periodType) {
-      case MONTHLY -> endDate.minusMonths(1);
-      case QUARTERLY -> endDate.minusMonths(3);
-      case YEARLY -> endDate.minusYears(1);
-    };
+    LocalDate startDate =
+        switch (periodType) {
+          case MONTHLY -> endDate.minusMonths(1);
+          case QUARTERLY -> endDate.minusMonths(3);
+          case YEARLY -> endDate.minusYears(1);
+        };
 
     LocalDate fetchStartDate = startDate.minusDays(40);
-    List<IndexData> fetchedData = indexDataRepository
-        .findByIndexInfoIdAndBaseDateBetweenOrderByBaseDateAsc(indexInfoId, fetchStartDate, endDate);
+    List<IndexData> fetchedData =
+        indexDataRepository.findByIndexInfoIdAndBaseDateBetweenOrderByBaseDateAsc(
+            indexInfoId, fetchStartDate, endDate);
 
     List<ChartDataPoint> dataPoints = new ArrayList<>();
     List<ChartDataPoint> ma5DataPoints = new ArrayList<>();
@@ -253,14 +309,15 @@ public class IndexDataService {
         periodType,
         dataPoints,
         ma5DataPoints,
-        ma20DataPoints
-    );
+        ma20DataPoints);
   }
 
   @Transactional
   public IndexDataResponse update(Long id, IndexDataUpdateRequest request) {
-    IndexData indexData = indexDataRepository.findById(id)
-        .orElseThrow(() -> new IllegalArgumentException("해당 지수 데이터가 없습니다. id=" + id));
+    IndexData indexData =
+        indexDataRepository
+            .findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("해당 지수 데이터가 없습니다. id=" + id));
 
     indexData.update(
         request.sourceType(),
@@ -272,8 +329,7 @@ public class IndexDataService {
         request.fluctuationRate(),
         request.tradingQuantity(),
         request.tradingPrice(),
-        request.marketTotalAmount()
-    );
+        request.marketTotalAmount());
     return indexDataMapper.toResponse(indexData);
   }
 }
