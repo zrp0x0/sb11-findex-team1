@@ -2,8 +2,8 @@ package com.codeit.findex.domain.indexinfo.repository;
 
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoSummaryResponse;
 import com.codeit.findex.domain.indexinfo.entity.IndexInfo;
-import java.util.List;
 import java.util.Optional;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -17,8 +17,6 @@ public interface IndexInfoRepository extends JpaRepository<IndexInfo, Long>, Ind
       String indexClassification,
       String indexName
   );
-
-
 
   // 요약 목록 조회에만 사용되는 필드만 가져오도록 JPQL 사용
   @Query(
