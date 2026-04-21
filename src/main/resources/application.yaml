@@ -23,6 +23,13 @@ spring:
       hibernate:
         format_sql: true
 
+findex:
+  sync-job:
+    auto-sync:
+      # 초 분 시 일 월 요일 / * = 매번 / 매일 오전 6시 0분 0초에 실행
+      cron: "0 0 6 * * *"
+
+
 # OPEN API url, key, num-of-rows
 open-api:
   stock-index:
