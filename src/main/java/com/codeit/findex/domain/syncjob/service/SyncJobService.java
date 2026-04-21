@@ -348,7 +348,7 @@ public class SyncJobService {
       try {
         runAutoSyncForIndex(autoSyncConfig);
       } catch (RuntimeException e) {
-        saveAutoSyncFailedJob(autoSyncConfig, LocalDate.now(), SCHEDULER_WORKER);
+        saveAutoSyncFailedJob(autoSyncConfig, LocalDate.now());
       }
     }
   }
@@ -398,15 +398,14 @@ public class SyncJobService {
   @Transactional
   protected void saveAutoSyncFailedJob(
       AutoSyncConfig autoSyncConfig,
-      LocalDate targetDate,
-      String worker
+      LocalDate targetDate
   ) {
     SyncJob failedJob = SyncJob.create(
         null,
         JobType.INDEX_DATA,
         autoSyncConfig.getIndexInfo(),
         targetDate,
-        worker,
+        SCHEDULER_WORKER,
         LocalDateTime.now(),
         SyncResult.FAILED
     );
