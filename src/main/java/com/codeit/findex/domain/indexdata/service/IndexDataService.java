@@ -40,7 +40,6 @@ public class IndexDataService {
   private final IndexInfoRepository indexInfoRepository;
   private final IndexDataMapper indexDataMapper;
 
-  // ✅ 팀원 코드: PerformancePeriodType 파라미터 받는 버전 사용
   public List<IndexDataFavoriteResponse> getFavoritePerformances(
       PerformancePeriodType performancePeriodType) {
     List<IndexData> favoriteIndexDataList =
@@ -107,7 +106,6 @@ public class IndexDataService {
     return null;
   }
 
-  // ✅ 내 코드: getPerformanceRank 유지
   public List<RankedIndexPerformanceResponse> getPerformanceRank(
       IndexPerformanceRankRequest request) {
     LocalDate currentDate = indexDataRepository.findTopByOrderByBaseDateDesc()
