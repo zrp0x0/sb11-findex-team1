@@ -335,24 +335,36 @@ public class IndexDataService {
         request.tradingPrice(),
         request.marketTotalAmount());
     return indexDataMapper.toResponse(indexData);
-
   }
+
   @Transactional
   public IndexDataResponse create(IndexDataCreateRequest request) {
-    IndexInfo indexInfo = indexInfoRepository.findById(request.indexInfoId())
-            .orElseThrow(() -> new EntityNotFoundException("해당 지수 정보를 찾을 수 없습니다. id=" + request.indexInfoId()));
+    IndexInfo indexInfo =
+        indexInfoRepository
+            .findById(request.indexInfoId())
+            .orElseThrow(
+                () ->
+                    new EntityNotFoundException(
+                        "해당 지수 정보를 찾을 수 없습니다. id=" + request.indexInfoId()));
 
-    if (indexDataRepository.existsByIndexInfo_IdAndBaseDate(request.indexInfoId(), request.baseDate())) {
+    if (indexDataRepository.existsByIndexInfo_IdAndBaseDate(
+        request.indexInfoId(), request.baseDate())) {
       throw new IllegalArgumentException("해당 날짜의 데이터가 이미 존재합니다.");
     }
 
-    IndexData indexData = indexDataMapper.toEntity(request, indexInfo);
+    IndexData indexData = indexDataMapper.toIndexData(request, indexInfo);
     IndexData savedData = indexDataRepository.save(indexData);
 
     return indexDataMapper.toResponse(savedData);
   }
 
+  @Transactional
+  public void delete(Long id) {
+    IndexData indexData =
+        indexDataRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("삭제할 지수 데이터를 찾을 수 없습니다. ID: " + id));
 
-
-
+    indexDataRepository.delete(indexData);
+  }
 }
