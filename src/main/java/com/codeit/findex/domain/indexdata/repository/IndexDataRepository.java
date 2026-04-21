@@ -8,7 +8,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface IndexDataRepository extends JpaRepository<IndexData, Long> {
+public interface IndexDataRepository extends JpaRepository<IndexData, Long>, IndexDataRepositoryCustom {
 
   // 추후 주석 삭제 및, QueryDSL 적용예정
   @EntityGraph(attributePaths = "indexInfo")
@@ -31,4 +31,6 @@ public interface IndexDataRepository extends JpaRepository<IndexData, Long> {
   @EntityGraph(attributePaths = "indexInfo")
   Optional<IndexData> findFirstByIndexInfoIdAndBaseDateLessThanEqualOrderByBaseDateDesc(
       Long indexInfoId, LocalDate baseDate);
+  // IndexDataRepository.java 내부에 추가
+  boolean existsByIndexInfo_IdAndBaseDate(Long indexInfoId, java.time.LocalDate baseDate);
 }

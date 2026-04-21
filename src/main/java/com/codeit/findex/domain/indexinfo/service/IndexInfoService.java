@@ -39,7 +39,7 @@ public class IndexInfoService {
     // 4. 다음 페이지 요청용 커서 값 추출
     String nextCursor = null;
     Long nextIdAfter = null;
-    if (!entities.isEmpty()) {
+    if (hasNext && !entities.isEmpty()) {
       IndexInfo lastItem = entities.get(entities.size() - 1);
       nextIdAfter = lastItem.getId();
 
