@@ -22,6 +22,8 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.codeit.findex.domain.indexdata.dto.request.IndexDataCreateRequest;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/index-data") // 복수형 사용하도록 수정
@@ -91,4 +93,20 @@ public class IndexDataController {
       @Valid @ModelAttribute IndexChartRequest request) {
     return ResponseEntity.ok(indexDataService.getChart(id, request.periodType()));
   }
+
+
+
+  @Operation(
+          summary = "지수 데이터 등록",
+          description = "새로운 지수 데이터를 등록합니다."
+  )
+  @PostMapping
+  public ResponseEntity<IndexDataResponse> create(
+          @Valid @RequestBody IndexDataCreateRequest request
+  ) {
+    IndexDataResponse response = indexDataService.create(request);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+
 }

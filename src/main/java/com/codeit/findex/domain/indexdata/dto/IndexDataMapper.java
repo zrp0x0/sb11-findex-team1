@@ -5,6 +5,8 @@ import java.math.BigDecimal;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
+import com.codeit.findex.domain.indexdata.dto.request.IndexDataCreateRequest;
+import com.codeit.findex.domain.indexinfo.entity.IndexInfo;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface IndexDataMapper {
@@ -27,5 +29,8 @@ public interface IndexDataMapper {
   @Mapping(source = "indexInfo.id", target = "indexInfoId")
   com.codeit.findex.domain.indexdata.dto.response.IndexDataResponse toResponse(IndexData indexData);
 
-
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "indexInfo", source = "indexInfo")
+  @Mapping(target = "sourceType", source = "request.sourceType")
+  IndexData toEntity(IndexDataCreateRequest request, IndexInfo indexInfo);
 }
