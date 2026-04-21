@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface SyncJobRepository
     extends JpaRepository<SyncJob, Long>, JpaSpecificationExecutor<SyncJob> {
 
-  // 최신성공
+  // 최신 성공
   Optional<SyncJob> findTopByJobTypeAndIndexInfo_IdAndResultOrderByTargetDateDesc(
       JobType jobType,
       Long indexInfoId,
