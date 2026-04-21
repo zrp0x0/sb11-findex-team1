@@ -29,12 +29,16 @@ import java.util.LinkedHashSet;
 import com.codeit.findex.domain.syncjob.specification.SyncJobSpecification;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 @RequiredArgsConstructor
@@ -53,6 +57,7 @@ public class SyncJobService {
   private final IndexInfoRepository indexInfoRepository;
   private final IndexDataRepository indexDataRepository;
   private final SyncJobMapper syncJobMapper;
+  private final PlatformTransactionManager transactionManager;
 
   @Transactional
   public List<IndexInfoSyncJobResponse> syncIndexInfos(String worker) {
@@ -91,7 +96,10 @@ public class SyncJobService {
   }
 
   private SyncJob saveIndexInfosSyncJob(OpenApiIndexInfoResponse row, String worker) {
+    LocalDate targetDate = (row == null) ? null : row.basePointInTime();
+
     try {
+      return executeInNewTransaction(() -> {
       validateIndexInfosRow(row);
 
       IndexInfo indexInfo = upsertIndexInfos(row);
@@ -101,24 +109,26 @@ public class SyncJobService {
               null,
               JobType.INDEX_INFO,
               indexInfo,
-              row.basePointInTime(),
+              targetDate,
               worker,
               LocalDateTime.now(),
               SyncResult.SUCCESS);
       return syncJobRepository.save(successJob);
+      });
     } catch (RuntimeException e) {
+      return executeInNewTransaction(() -> {
       SyncJob failedJob =
           SyncJob.create(
               null,
               JobType.INDEX_INFO,
               null,
-              row.basePointInTime(),
+              targetDate,
               worker,
               LocalDateTime.now(),
               SyncResult.FAILED);
       return syncJobRepository.save(failedJob);
-    }
-  }
+    });
+  }}
 
   private void validateIndexInfosRow(OpenApiIndexInfoResponse row) {
     if (row.employedItemsCount() == null) {
@@ -228,34 +238,39 @@ public class SyncJobService {
     LocalDate targetDate = (row == null) ? null : row.baseDate();
 
     try {
-      validateIndexDataRow(row);
+      return executeInNewTransaction(
+          () -> {
+            validateIndexDataRow(row);
 
-      IndexInfo indexInfo = findOrCreateIndexInfo(row);
-      upsertIndexData(row, indexInfo);
+            IndexInfo indexInfo = findOrCreateIndexInfo(row);
+            upsertIndexData(row, indexInfo);
 
-      SyncJob successJob =
-          SyncJob.create(
-              null,
-              JobType.INDEX_DATA,
-              indexInfo,
-              targetDate,
-              worker,
-              LocalDateTime.now(),
-              SyncResult.SUCCESS);
+            SyncJob successJob =
+                SyncJob.create(
+                    null,
+                    JobType.INDEX_DATA,
+                    indexInfo,
+                    targetDate,
+                    worker,
+                    LocalDateTime.now(),
+                    SyncResult.SUCCESS);
 
-      return syncJobRepository.save(successJob);
+            return syncJobRepository.save(successJob);
+          });
     } catch (RuntimeException e) {
-      SyncJob failedJob =
-          SyncJob.create(
-              null,
-              JobType.INDEX_DATA,
-              null,
-              targetDate,
-              worker,
-              LocalDateTime.now(),
-              SyncResult.FAILED);
-
-      return syncJobRepository.save(failedJob);
+      return executeInNewTransaction(
+          () -> {
+            SyncJob failedJob =
+                SyncJob.create(
+                    null,
+                    JobType.INDEX_DATA,
+                    null,
+                    targetDate,
+                    worker,
+                    LocalDateTime.now(),
+                    SyncResult.FAILED);
+            return syncJobRepository.save(failedJob);
+          });
     }
   }
 
@@ -346,13 +361,10 @@ public class SyncJobService {
 
     boolean hasNext = syncJobs.size() > size;
 
-    List<SyncJob> pageItems = syncJobs.stream()
-        .limit(size)
-        .toList();
+    List<SyncJob> pageItems = syncJobs.stream().limit(size).toList();
 
-    List<SyncJobResponse> content = pageItems.stream()
-        .map(syncJobMapper::toSyncJobResponse)
-        .toList();
+    List<SyncJobResponse> content =
+        pageItems.stream().map(syncJobMapper::toSyncJobResponse).toList();
 
     String nextCursor = null;
     Long nextIdAfter = null;
@@ -369,13 +381,7 @@ public class SyncJobService {
     }
 
     return new SyncJobPageResponse(
-        content,
-        nextCursor,
-        nextIdAfter,
-        content.size(),
-        (long) syncJobs.size(),
-        hasNext
-    );
+        content, nextCursor, nextIdAfter, content.size(), (long) syncJobs.size(), hasNext);
   }
 
   private Sort createSort(SyncJobListRequest request) {
@@ -393,5 +399,11 @@ public class SyncJobService {
     }
 
     return Sort.by(direction, sortBy);
+  }
+
+  private <T> T executeInNewTransaction(Supplier<T> action) {
+    TransactionTemplate tx = new TransactionTemplate(transactionManager);
+    tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    return tx.execute(status -> action.get());
   }
 }
