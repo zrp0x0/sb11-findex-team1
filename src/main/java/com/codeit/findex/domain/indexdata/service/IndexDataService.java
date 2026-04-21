@@ -303,7 +303,7 @@ public class IndexDataService {
       throw new IllegalArgumentException("해당 날짜의 데이터가 이미 존재합니다.");
     }
 
-    IndexData indexData = indexDataMapper.toEntity(request, indexInfo);
+    IndexData indexData = indexDataMapper.toIndexData(request, indexInfo);
     IndexData savedData = indexDataRepository.save(indexData);
 
     return indexDataMapper.toResponse(savedData);
