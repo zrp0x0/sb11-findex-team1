@@ -19,4 +19,16 @@ public interface IndexDataRepository extends JpaRepository<IndexData, Long> {
   @EntityGraph(attributePaths = "indexInfo")
   List<IndexData> findByIndexInfoIdAndBaseDateBetweenOrderByBaseDateAsc(
       Long indexInfoId, LocalDate startDate, LocalDate endDate);
+
+  Optional<IndexData> findTopByOrderByBaseDateDesc();
+
+  @EntityGraph(attributePaths = "indexInfo")
+  List<IndexData> findByBaseDate(LocalDate baseDate);
+
+  @EntityGraph(attributePaths = "indexInfo")
+  List<IndexData> findByBaseDateAndIndexInfoId(LocalDate baseDate, Long indexInfoId);
+
+  @EntityGraph(attributePaths = "indexInfo")
+  Optional<IndexData> findFirstByIndexInfoIdAndBaseDateLessThanEqualOrderByBaseDateDesc(
+      Long indexInfoId, LocalDate baseDate);
 }
