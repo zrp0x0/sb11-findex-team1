@@ -161,11 +161,12 @@ public class IndexDataService {
 
   public List<RankedIndexPerformanceResponse> getPerformanceRank(
       IndexPerformanceRankRequest request) {
-    LocalDate currentDate =
-        indexDataRepository
-            .findTopByOrderByBaseDateDesc()
-            .orElseThrow(() -> new IllegalStateException("지수 데이터가 없습니다."))
-            .getBaseDate();
+    Optional<IndexData> latestData = indexDataRepository.findTopByOrderByBaseDateDesc();
+    if (latestData.isEmpty()) {
+      return new ArrayList<>();
+    }
+
+    LocalDate currentDate = latestData.get().getBaseDate();
     LocalDate targetDate = getRankTargetDate(currentDate, request.periodType());
     List<IndexData> currentDataList = findCurrentData(currentDate, request.indexInfoId());
 
