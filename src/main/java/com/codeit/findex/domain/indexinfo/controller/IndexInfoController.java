@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -72,6 +73,22 @@ public class IndexInfoController {
   public ResponseEntity<IndexInfoResponse> readIndexInfoById(@PathVariable Long id) {
     IndexInfoResponse response = indexInfoService.readIndexInfoById(id);
     return ResponseEntity.ok(response);
+  }
+
+  @Operation(
+      summary = "지수 정보 요약 목록 조회",
+      description = "지수 ID, 분류, 이름만 포함한 전체 지수 목록을 조회합니다.",
+      operationId = "getIndexInfoSummaries")
+  @ApiResponses(
+      value = {
+          @ApiResponse(responseCode = "200", description = "지수 정보 요약 목록 조회 성공"),
+          @ApiResponse(responseCode = "500", description = "서버 오류")
+      })
+  @GetMapping("/summaries")
+  public ResponseEntity<List<IndexInfoSummaryResponse>> getIndexInfoSummaries() {
+    List<IndexInfoSummaryResponse> infoSummaryResponses =
+        indexInfoService.findAllIndexInfoSummaries();
+    return ResponseEntity.ok(infoSummaryResponses);
   }
 
   @Operation(
