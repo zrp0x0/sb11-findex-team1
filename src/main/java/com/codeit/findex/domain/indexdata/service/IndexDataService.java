@@ -29,8 +29,6 @@ import java.util.Map;
 import java.util.Optional;
 import com.codeit.findex.domain.indexdata.dto.request.IndexDataCreateRequest;
 import jakarta.persistence.EntityNotFoundException;
-
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -115,25 +113,26 @@ public class IndexDataService {
       LocalDate targetDate = getTargetDate(latest.getBaseDate(), performancePeriodType);
       IndexData compareData = findCompareData(indexDataList, targetDate);
 
-      if (compareData == null
-          || compareData.getClosingPrice() == null
-          || compareData.getBaseDate() == null) {
-        continue;
-      }
-
       BigDecimal currentPrice = latest.getClosingPrice();
-      BigDecimal beforePrice = compareData.getClosingPrice();
-      BigDecimal versus = currentPrice.subtract(beforePrice);
-
+      BigDecimal beforePrice = null;
+      BigDecimal versus = null;
       BigDecimal fluctuationRate = null;
-      if (beforePrice.compareTo(BigDecimal.ZERO) != 0) {
-        fluctuationRate =
-            versus
-                .divide(beforePrice, 6, RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100))
-                .setScale(2, RoundingMode.HALF_UP);
+
+      // 과거 데이터가 존재할 때만 대비(versus)와 등락률(fluctuationRate) 계산
+      if (compareData != null && compareData.getClosingPrice() != null) {
+        beforePrice = compareData.getClosingPrice();
+        versus = currentPrice.subtract(beforePrice);
+
+        if (beforePrice.compareTo(BigDecimal.ZERO) != 0) {
+          fluctuationRate =
+              versus
+                  .divide(beforePrice, 6, RoundingMode.HALF_UP)
+                  .multiply(BigDecimal.valueOf(100))
+                  .setScale(2, RoundingMode.HALF_UP);
+        }
       }
 
+      // 과거 데이터가 없어서 versus 등이 null이더라도 일단 응답 리스트에는 무조건 추가
       responses.add(
           indexDataMapper.toIndexDataFavoriteResponse(
               latest, versus, fluctuationRate, currentPrice, beforePrice));
