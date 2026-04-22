@@ -277,19 +277,33 @@ public class IndexDataService {
       BigDecimal ma5 = null;
       if (i >= 4) {
         BigDecimal sum5 = BigDecimal.ZERO;
+        int validCount5 = 0;
         for (int j = i - 4; j <= i; j++) {
-          sum5 = sum5.add(fetchedData.get(j).getClosingPrice());
+          BigDecimal price = fetchedData.get(j).getClosingPrice();
+          if (price != null) {
+            sum5 = sum5.add(price);
+            validCount5++;
+          }
         }
-        ma5 = sum5.divide(BigDecimal.valueOf(5), 2, RoundingMode.HALF_UP);
+        if (validCount5 > 0) {
+          ma5 = sum5.divide(BigDecimal.valueOf(validCount5), 2, RoundingMode.HALF_UP);
+        }
       }
 
       BigDecimal ma20 = null;
       if (i >= 19) {
         BigDecimal sum20 = BigDecimal.ZERO;
+        int validCount20 = 0;
         for (int j = i - 19; j <= i; j++) {
-          sum20 = sum20.add(fetchedData.get(j).getClosingPrice());
+          BigDecimal price = fetchedData.get(j).getClosingPrice();
+          if (price != null) {
+            sum20 = sum20.add(price);
+            validCount20++;
+          }
         }
-        ma20 = sum20.divide(BigDecimal.valueOf(20), 2, RoundingMode.HALF_UP);
+        if (validCount20 > 0) {
+          ma20 = sum20.divide(BigDecimal.valueOf(validCount20), 2, RoundingMode.HALF_UP);
+        }
       }
 
       if (!currentDate.isBefore(startDate)) {
