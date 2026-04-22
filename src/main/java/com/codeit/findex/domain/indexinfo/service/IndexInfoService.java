@@ -88,6 +88,9 @@ public class IndexInfoService {
     // 3. DB 저장
     IndexInfo savedIndexInfo = indexInfoRepository.save(newIndexInfo);
 
+    // 4. auto_sync_config 데이터 넣기
+
+
     return indexInfoMapper.toIndexInfoResponse(savedIndexInfo);
   }
 
