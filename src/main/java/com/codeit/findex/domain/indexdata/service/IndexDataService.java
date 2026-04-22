@@ -381,6 +381,11 @@ public class IndexDataService {
 
       List<IndexData> indexDataList = indexDataRepository.findAllForExport(request);
 
+      // 데이터가 없을 경우 다운로드를 못하도록 방어
+      if (indexDataList.isEmpty()) {
+        throw new FileDownloadException("조건에 맞는 다운로드 데이터가 존재하지 않습니다.");
+      }
+
       for (IndexData data : indexDataList) {
         StringBuilder row = new StringBuilder();
 
