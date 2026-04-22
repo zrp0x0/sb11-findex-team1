@@ -38,8 +38,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class IndexDataService {
 
-  private static final int DEFAULT_RANK_LIMIT = 10;
-
   private final IndexDataRepository indexDataRepository;
   private final IndexInfoRepository indexInfoRepository;
   private final IndexDataMapper indexDataMapper;
@@ -185,9 +183,6 @@ public class IndexDataService {
   }
 
   private LocalDate getRankTargetDate(LocalDate currentDate, UnitPeriodType periodType) {
-    if (periodType == null) {
-      throw new IllegalArgumentException("기간 유형은 필수입니다.");
-    }
     return switch (periodType) {
       case DAILY -> currentDate.minusDays(1);
       case WEEKLY -> currentDate.minusWeeks(1);
@@ -242,9 +237,6 @@ public class IndexDataService {
   }
 
   private int resolveRankLimit(Integer limit) {
-    if (limit == null) {
-      return DEFAULT_RANK_LIMIT;
-    }
     if (limit < 1) {
       throw new IllegalArgumentException("랭킹 개수는 1 이상이어야 합니다.");
     }
