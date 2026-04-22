@@ -261,7 +261,7 @@ public class IndexDataService {
           case YEARLY -> endDate.minusYears(1);
         };
 
-    LocalDate fetchStartDate = startDate.minusDays(40);
+    LocalDate fetchStartDate = startDate.minusDays(60);
     List<IndexData> fetchedData =
         indexDataRepository.findByIndexInfoIdAndBaseDateBetweenOrderByBaseDateAsc(
             indexInfoId, fetchStartDate, endDate);
