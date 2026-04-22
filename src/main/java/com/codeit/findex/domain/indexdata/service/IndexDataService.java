@@ -249,7 +249,11 @@ public class IndexDataService {
             .findById(indexInfoId)
             .orElseThrow(() -> new IllegalArgumentException("해당 지수 정보가 없습니다. id=" + indexInfoId));
 
-    LocalDate endDate = LocalDate.now();
+    LocalDate endDate = indexDataRepository
+        .findFirstByIndexInfoIdAndBaseDateLessThanEqualOrderByBaseDateDesc(indexInfoId, LocalDate.now())
+        .map(IndexData::getBaseDate)
+        .orElseGet(LocalDate::now);
+
     LocalDate startDate =
         switch (periodType) {
           case MONTHLY -> endDate.minusMonths(1);
