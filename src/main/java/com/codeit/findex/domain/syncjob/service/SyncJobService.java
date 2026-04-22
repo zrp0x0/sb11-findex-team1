@@ -1,5 +1,7 @@
 package com.codeit.findex.domain.syncjob.service;
 
+import com.codeit.findex.domain.autosyncconfig.entity.AutoSyncConfig;
+import com.codeit.findex.domain.autosyncconfig.repository.AutoSyncConfigRepository;
 import com.codeit.findex.domain.common.enums.JobType;
 import com.codeit.findex.domain.common.enums.SourceType;
 import com.codeit.findex.domain.common.enums.SyncResult;
@@ -59,6 +61,9 @@ public class SyncJobService {
   private final SyncJobMapper syncJobMapper;
   private final PlatformTransactionManager transactionManager;
 
+  // 자동 연동 설정 테이블
+  private final AutoSyncConfigRepository autoSyncConfigRepository;
+
   @Transactional
   public List<IndexInfoSyncJobResponse> syncIndexInfos(String worker) {
     String resolvedWorker = (worker == null || worker.isBlank()) ? "system" : worker;
@@ -99,36 +104,39 @@ public class SyncJobService {
     LocalDate targetDate = (row == null) ? null : row.basePointInTime();
 
     try {
-      return executeInNewTransaction(() -> {
-      validateIndexInfosRow(row);
+      return executeInNewTransaction(
+          () -> {
+            validateIndexInfosRow(row);
 
-      IndexInfo indexInfo = upsertIndexInfos(row);
+            IndexInfo indexInfo = upsertIndexInfos(row);
 
-      SyncJob successJob =
-          SyncJob.create(
-              null,
-              JobType.INDEX_INFO,
-              indexInfo,
-              targetDate,
-              worker,
-              LocalDateTime.now(),
-              SyncResult.SUCCESS);
-      return syncJobRepository.save(successJob);
-      });
+            SyncJob successJob =
+                SyncJob.create(
+                    null,
+                    JobType.INDEX_INFO,
+                    indexInfo,
+                    targetDate,
+                    worker,
+                    LocalDateTime.now(),
+                    SyncResult.SUCCESS);
+            return syncJobRepository.save(successJob);
+          });
     } catch (RuntimeException e) {
-      return executeInNewTransaction(() -> {
-      SyncJob failedJob =
-          SyncJob.create(
-              null,
-              JobType.INDEX_INFO,
-              null,
-              targetDate,
-              worker,
-              LocalDateTime.now(),
-              SyncResult.FAILED);
-      return syncJobRepository.save(failedJob);
-    });
-  }}
+      return executeInNewTransaction(
+          () -> {
+            SyncJob failedJob =
+                SyncJob.create(
+                    null,
+                    JobType.INDEX_INFO,
+                    null,
+                    targetDate,
+                    worker,
+                    LocalDateTime.now(),
+                    SyncResult.FAILED);
+            return syncJobRepository.save(failedJob);
+          });
+    }
+  }
 
   private void validateIndexInfosRow(OpenApiIndexInfoResponse row) {
     if (row.employedItemsCount() == null) {
@@ -155,16 +163,22 @@ public class SyncJobService {
               return existing;
             })
         .orElseGet(
-            () ->
-                indexInfoRepository.save(
-                    IndexInfo.create(
-                        row.indexClassification(),
-                        row.indexName(),
-                        row.employedItemsCount(),
-                        row.basePointInTime(),
-                        row.baseIndex(),
-                        SourceType.OPEN_API,
-                        false)));
+            () -> {
+              IndexInfo newIndexInfo =
+                  IndexInfo.createByOpenAPI(
+                      row.indexClassification(),
+                      row.indexName(),
+                      row.employedItemsCount(),
+                      row.basePointInTime(),
+                      row.baseIndex());
+              IndexInfo savedIndexInfo = indexInfoRepository.save(newIndexInfo);
+
+              // 새로운 지수이면 테이블에 데이터 밀어넣기
+              AutoSyncConfig syncConfig = AutoSyncConfig.create(savedIndexInfo, true);
+              autoSyncConfigRepository.save(syncConfig);
+
+              return savedIndexInfo;
+            });
   }
 
   @Transactional

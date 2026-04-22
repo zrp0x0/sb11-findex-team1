@@ -9,11 +9,7 @@ import com.codeit.findex.domain.indexdata.dto.request.IndexDataUpdateRequest;
 import com.codeit.findex.domain.indexdata.dto.request.IndexPerformanceRankRequest;
 import com.codeit.findex.domain.indexdata.dto.request.PeriodType;
 import com.codeit.findex.domain.indexdata.dto.request.UnitPeriodType;
-import com.codeit.findex.domain.indexdata.dto.response.ChartDataPoint;
-import com.codeit.findex.domain.indexdata.dto.response.IndexChartResponse;
-import com.codeit.findex.domain.indexdata.dto.response.IndexDataResponse;
-import com.codeit.findex.domain.indexdata.dto.response.IndexPerformanceResponse;
-import com.codeit.findex.domain.indexdata.dto.response.RankedIndexPerformanceResponse;
+import com.codeit.findex.domain.indexdata.dto.response.*;
 import com.codeit.findex.domain.indexdata.entity.IndexData;
 import com.codeit.findex.domain.indexdata.repository.IndexDataRepository;
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoCursorResponse;
@@ -351,24 +347,23 @@ public class IndexDataService {
   }
 
   @Transactional
-  public IndexDataResponse create(IndexDataCreateRequest request) {
-    IndexInfo indexInfo =
-        indexInfoRepository
-            .findById(request.indexInfoId())
-            .orElseThrow(
-                () ->
-                    new EntityNotFoundException(
-                        "해당 지수 정보를 찾을 수 없습니다. id=" + request.indexInfoId()));
+  public IndexDataCreateResponse create(IndexDataCreateRequest request) {
+    IndexInfo indexInfo = indexInfoRepository.findById(request.indexInfoId())
+            .orElseThrow(() -> new EntityNotFoundException("참조하는 지수 정보를 찾을 수 없습니다. ID: " + request.indexInfoId()));
 
-    if (indexDataRepository.existsByIndexInfo_IdAndBaseDate(
-        request.indexInfoId(), request.baseDate())) {
+    // 2. 날짜 중복 체크 (400)
+    if (indexDataRepository.existsByIndexInfo_IdAndBaseDate(request.indexInfoId(), request.baseDate())) {
       throw new IllegalArgumentException("해당 날짜의 데이터가 이미 존재합니다.");
     }
 
+    // 3. 변환 (Mapper가 여기서 IndexInfo의 sourceType을 IndexData에 넣어줍니다)
     IndexData indexData = indexDataMapper.toIndexData(request, indexInfo);
+
+    // 4. 저장
     IndexData savedData = indexDataRepository.save(indexData);
 
-    return indexDataMapper.toResponse(savedData);
+    // 5. 응답 반환
+    return indexDataMapper.toIndexCreateResponse(savedData);
   }
 
   @Transactional

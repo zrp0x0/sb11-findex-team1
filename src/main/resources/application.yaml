@@ -27,5 +27,5 @@ spring:
 open-api:
   stock-index:
     base-url: https://apis.data.go.kr/1160100/service/GetMarketIndexInfoService/getStockMarketIndex
-    service-key: ${OPEN_API_STOCK_INDEX_SERVICE_KEY:}
+    service-key: 0ef32bf2fa093ed68f76e0384f83b3cd2721c419c102217d970de88c22cedaae
     num-of-rows: 100

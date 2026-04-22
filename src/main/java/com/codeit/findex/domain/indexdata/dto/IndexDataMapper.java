@@ -1,5 +1,6 @@
 package com.codeit.findex.domain.indexdata.dto;
 
+import com.codeit.findex.domain.indexdata.dto.response.IndexDataCreateResponse;
 import com.codeit.findex.domain.indexdata.dto.response.IndexPerformanceResponse;
 import com.codeit.findex.domain.indexdata.entity.IndexData;
 import java.math.BigDecimal;
@@ -32,9 +33,12 @@ public interface IndexDataMapper {
 
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "indexInfo", source = "indexInfo")
-  @Mapping(target = "sourceType", source = "request.sourceType")
-// toEntity -> toIndexData로 이름을 더 명확하게 변경했습니다.
+  @Mapping(target = "sourceType", source = "indexInfo.sourceType")
   IndexData toIndexData(IndexDataCreateRequest request, IndexInfo indexInfo);
+
+  @Mapping(source = "indexInfo.id", target = "indexInfoId")
+  @Mapping(source = "indexInfo.sourceType", target = "sourceType")
+  IndexDataCreateResponse toIndexCreateResponse(IndexData indexData);
 
 
   @Mapping(source = "currentData.indexInfo.id", target = "indexInfoId")

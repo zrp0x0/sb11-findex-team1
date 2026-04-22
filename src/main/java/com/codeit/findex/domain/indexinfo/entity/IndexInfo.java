@@ -108,6 +108,22 @@ public class IndexInfo {
         favorite);
   }
 
+  public static IndexInfo createByOpenAPI(
+          String indexClassification,
+          String indexName,
+          Integer employedItemsCount,
+          LocalDate basePointInTime,
+          BigDecimal baseIndex) {
+    return new IndexInfo(
+            indexClassification,
+            indexName,
+            employedItemsCount,
+            basePointInTime,
+            baseIndex,
+            SourceType.OPEN_API,
+            false);
+  }
+
   public void update(
       Integer employedItemsCount,
       LocalDate basePointInTime,

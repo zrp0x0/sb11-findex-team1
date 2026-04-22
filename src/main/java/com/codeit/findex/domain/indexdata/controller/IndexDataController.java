@@ -8,6 +8,7 @@ import com.codeit.findex.domain.indexdata.dto.request.IndexDataExportCSVRequest;
 import com.codeit.findex.domain.indexdata.dto.request.IndexDataUpdateRequest;
 import com.codeit.findex.domain.indexdata.dto.request.IndexPerformanceRankRequest;
 import com.codeit.findex.domain.indexdata.dto.response.IndexChartResponse;
+import com.codeit.findex.domain.indexdata.dto.response.IndexDataCreateResponse;
 import com.codeit.findex.domain.indexdata.dto.response.IndexDataResponse;
 import com.codeit.findex.domain.indexdata.dto.response.RankedIndexPerformanceResponse;
 import com.codeit.findex.domain.indexdata.service.IndexDataService;
@@ -102,9 +103,9 @@ public class IndexDataController {
 
   @Operation(summary = "지수 데이터 등록", description = "새로운 지수 데이터를 등록합니다.")
   @PostMapping
-  public ResponseEntity<IndexDataResponse> create(
+  public ResponseEntity<IndexDataCreateResponse> create(
       @Valid @RequestBody IndexDataCreateRequest request) {
-    IndexDataResponse response = indexDataService.create(request);
+    IndexDataCreateResponse response = indexDataService.create(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
