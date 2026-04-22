@@ -1,16 +1,14 @@
-package com.codeit.findex.domain.indexdata.dto.request;
+package com.codeit.findex.domain.indexdata.dto.response;
 
-import jakarta.validation.constraints.NotNull;
+import com.codeit.findex.domain.common.enums.SourceType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public record IndexDataCreateRequest(
-        @NotNull(message = "지수 정보 ID는 필수입니다.")
+public record IndexDataCreateResponse(
+        Long id,
         Long indexInfoId,
-
-        @NotNull(message = "기준 일자는 필수입니다.")
         LocalDate baseDate,
-
+        SourceType sourceType,
         BigDecimal marketPrice,
         BigDecimal closingPrice,
         BigDecimal highPrice,
