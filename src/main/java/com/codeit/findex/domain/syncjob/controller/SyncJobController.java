@@ -6,8 +6,11 @@ import com.codeit.findex.domain.syncjob.dto.indexdata.IndexDataSyncJobResponse;
 import com.codeit.findex.domain.syncjob.dto.indexdata.SyncIndexDataRequest;
 import com.codeit.findex.domain.syncjob.dto.indexinfo.IndexInfoSyncJobResponse;
 import com.codeit.findex.domain.syncjob.service.SyncJobService;
+import com.codeit.findex.global.error.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,6 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,9 +41,24 @@ public class SyncJobController {
       operationId = "syncIndexInfos")
   @ApiResponses(
       value = {
-          @ApiResponse(responseCode = "202", description = "연동 작업 생성 성공"),
-          @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-          @ApiResponse(responseCode = "500", description = "서버 오류")
+          @ApiResponse(
+              responseCode = "200",
+              description = "연동 작업 생성 성공",
+              content = @Content(
+                  mediaType = "*/*",
+                  schema = @Schema(implementation = IndexInfoSyncJobResponse.class))),
+          @ApiResponse(
+              responseCode = "400",
+              description = "잘못된 요청",
+              content = @Content(
+                  mediaType = "*/*",
+                  schema = @Schema(implementation = ErrorResponse.class))),
+          @ApiResponse(
+              responseCode = "500",
+              description = "서버 오류",
+              content = @Content(
+                  mediaType = "*/*",
+                  schema = @Schema(implementation = ErrorResponse.class)))
       })
   @PostMapping("/index-infos")
   public ResponseEntity<List<IndexInfoSyncJobResponse>> syncIndexInfos(
@@ -55,10 +74,30 @@ public class SyncJobController {
       operationId = "syncIndexData")
   @ApiResponses(
       value = {
-          @ApiResponse(responseCode = "202", description = "연동 작업 생성 성공"),
-          @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-          @ApiResponse(responseCode = "404", description = "지수 정보를 찾을 수 없음"),
-          @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+          @ApiResponse(
+              responseCode = "200",
+              description = "연동 작업 생성 성공",
+              content = @Content(
+                  mediaType = "*/*",
+                  schema = @Schema(implementation = IndexDataSyncJobResponse.class))),
+          @ApiResponse(
+              responseCode = "400",
+              description = "잘못된 요청",
+              content = @Content(
+                  mediaType = "*/*",
+                  schema = @Schema(implementation = ErrorResponse.class))),
+          @ApiResponse(
+              responseCode = "404",
+              description = "지수 정보를 찾을 수 없음",
+              content = @Content(
+                  mediaType = "*/*",
+                  schema = @Schema(implementation = ErrorResponse.class))),
+          @ApiResponse(
+              responseCode = "500",
+              description = "서버 내부 오류",
+              content = @Content(
+                  mediaType = "*/*",
+                  schema = @Schema(implementation = ErrorResponse.class)))
       })
   @PostMapping("/index-data")
   public ResponseEntity<List<IndexDataSyncJobResponse>> syncIndexData(
@@ -77,13 +116,28 @@ public class SyncJobController {
       operationId = "getSyncJobList")
   @ApiResponses(
       value = {
-          @ApiResponse(responseCode = "200", description = "자동 연동 설정 목록 조회 성공"),
-          @ApiResponse(responseCode = "400", description = "잘못된 요청 (유효하지 않은 필터 값 등)"),
-          @ApiResponse(responseCode = "500", description = "서버 오류")
+          @ApiResponse(
+              responseCode = "200",
+              description = "연동 작업 목록 조회 성공",
+              content = @Content(
+                  mediaType = "*/*",
+                  schema = @Schema(implementation = SyncJobPageResponse.class))),
+          @ApiResponse(
+              responseCode = "400",
+              description = "잘못된 요청 (유효하지 않은 필터 값 등)",
+              content = @Content(
+                  mediaType = "*/*",
+                  schema = @Schema(implementation = ErrorResponse.class))),
+          @ApiResponse(
+              responseCode = "500",
+              description = "서버 오류",
+              content = @Content(
+                  mediaType = "*/*",
+                  schema = @Schema(implementation = ErrorResponse.class)))
       })
   @GetMapping
   public ResponseEntity<SyncJobPageResponse> getSyncjobs(
-      @Valid SyncJobListRequest request) {
+      @ParameterObject @Valid SyncJobListRequest request) {
     SyncJobPageResponse response = syncJobService.getSyncJobs(request);
     return ResponseEntity.ok(response);
   }

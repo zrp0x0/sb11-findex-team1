@@ -4,6 +4,7 @@ import com.codeit.findex.domain.common.enums.PerformancePeriodType;
 import com.codeit.findex.domain.indexdata.dto.IndexDataFavoriteResponse;
 import com.codeit.findex.domain.indexdata.dto.IndexDataMapper;
 import com.codeit.findex.domain.indexdata.dto.IndexDataSearchCondition;
+import com.codeit.findex.domain.indexdata.dto.request.IndexDataExportCSVRequest;
 import com.codeit.findex.domain.indexdata.dto.request.IndexDataUpdateRequest;
 import com.codeit.findex.domain.indexdata.dto.request.IndexPerformanceRankRequest;
 import com.codeit.findex.domain.indexdata.dto.request.PeriodType;
@@ -18,6 +19,9 @@ import com.codeit.findex.domain.indexdata.repository.IndexDataRepository;
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoCursorResponse;
 import com.codeit.findex.domain.indexinfo.entity.IndexInfo;
 import com.codeit.findex.domain.indexinfo.repository.IndexInfoRepository;
+import com.codeit.findex.global.error.exception.FileDownloadException;
+import java.io.IOException;
+import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -29,8 +33,6 @@ import java.util.Map;
 import java.util.Optional;
 import com.codeit.findex.domain.indexdata.dto.request.IndexDataCreateRequest;
 import jakarta.persistence.EntityNotFoundException;
-
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,8 +41,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class IndexDataService {
-
-  private static final int DEFAULT_RANK_LIMIT = 10;
 
   private final IndexDataRepository indexDataRepository;
   private final IndexInfoRepository indexInfoRepository;
@@ -115,25 +115,26 @@ public class IndexDataService {
       LocalDate targetDate = getTargetDate(latest.getBaseDate(), performancePeriodType);
       IndexData compareData = findCompareData(indexDataList, targetDate);
 
-      if (compareData == null
-          || compareData.getClosingPrice() == null
-          || compareData.getBaseDate() == null) {
-        continue;
-      }
-
       BigDecimal currentPrice = latest.getClosingPrice();
-      BigDecimal beforePrice = compareData.getClosingPrice();
-      BigDecimal versus = currentPrice.subtract(beforePrice);
-
+      BigDecimal beforePrice = null;
+      BigDecimal versus = null;
       BigDecimal fluctuationRate = null;
-      if (beforePrice.compareTo(BigDecimal.ZERO) != 0) {
-        fluctuationRate =
-            versus
-                .divide(beforePrice, 6, RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100))
-                .setScale(2, RoundingMode.HALF_UP);
+
+      // 과거 데이터가 존재할 때만 대비(versus)와 등락률(fluctuationRate) 계산
+      if (compareData != null && compareData.getClosingPrice() != null) {
+        beforePrice = compareData.getClosingPrice();
+        versus = currentPrice.subtract(beforePrice);
+
+        if (beforePrice.compareTo(BigDecimal.ZERO) != 0) {
+          fluctuationRate =
+              versus
+                  .divide(beforePrice, 6, RoundingMode.HALF_UP)
+                  .multiply(BigDecimal.valueOf(100))
+                  .setScale(2, RoundingMode.HALF_UP);
+        }
       }
 
+      // 과거 데이터가 없어서 versus 등이 null이더라도 일단 응답 리스트에는 무조건 추가
       responses.add(
           indexDataMapper.toIndexDataFavoriteResponse(
               latest, versus, fluctuationRate, currentPrice, beforePrice));
@@ -161,11 +162,12 @@ public class IndexDataService {
 
   public List<RankedIndexPerformanceResponse> getPerformanceRank(
       IndexPerformanceRankRequest request) {
-    LocalDate currentDate =
-        indexDataRepository
-            .findTopByOrderByBaseDateDesc()
-            .orElseThrow(() -> new IllegalStateException("지수 데이터가 없습니다."))
-            .getBaseDate();
+    Optional<IndexData> latestData = indexDataRepository.findTopByOrderByBaseDateDesc();
+    if (latestData.isEmpty()) {
+      return new ArrayList<>();
+    }
+
+    LocalDate currentDate = latestData.get().getBaseDate();
     LocalDate targetDate = getRankTargetDate(currentDate, request.periodType());
     List<IndexData> currentDataList = findCurrentData(currentDate, request.indexInfoId());
 
@@ -185,9 +187,6 @@ public class IndexDataService {
   }
 
   private LocalDate getRankTargetDate(LocalDate currentDate, UnitPeriodType periodType) {
-    if (periodType == null) {
-      throw new IllegalArgumentException("기간 유형은 필수입니다.");
-    }
     return switch (periodType) {
       case DAILY -> currentDate.minusDays(1);
       case WEEKLY -> currentDate.minusWeeks(1);
@@ -242,9 +241,6 @@ public class IndexDataService {
   }
 
   private int resolveRankLimit(Integer limit) {
-    if (limit == null) {
-      return DEFAULT_RANK_LIMIT;
-    }
     if (limit < 1) {
       throw new IllegalArgumentException("랭킹 개수는 1 이상이어야 합니다.");
     }
@@ -257,7 +253,11 @@ public class IndexDataService {
             .findById(indexInfoId)
             .orElseThrow(() -> new IllegalArgumentException("해당 지수 정보가 없습니다. id=" + indexInfoId));
 
-    LocalDate endDate = LocalDate.now();
+    LocalDate endDate = indexDataRepository
+        .findFirstByIndexInfoIdAndBaseDateLessThanEqualOrderByBaseDateDesc(indexInfoId, LocalDate.now())
+        .map(IndexData::getBaseDate)
+        .orElseGet(LocalDate::now);
+
     LocalDate startDate =
         switch (periodType) {
           case MONTHLY -> endDate.minusMonths(1);
@@ -265,7 +265,7 @@ public class IndexDataService {
           case YEARLY -> endDate.minusYears(1);
         };
 
-    LocalDate fetchStartDate = startDate.minusDays(40);
+    LocalDate fetchStartDate = startDate.minusDays(60);
     List<IndexData> fetchedData =
         indexDataRepository.findByIndexInfoIdAndBaseDateBetweenOrderByBaseDateAsc(
             indexInfoId, fetchStartDate, endDate);
@@ -281,19 +281,33 @@ public class IndexDataService {
       BigDecimal ma5 = null;
       if (i >= 4) {
         BigDecimal sum5 = BigDecimal.ZERO;
+        int validCount5 = 0;
         for (int j = i - 4; j <= i; j++) {
-          sum5 = sum5.add(fetchedData.get(j).getClosingPrice());
+          BigDecimal price = fetchedData.get(j).getClosingPrice();
+          if (price != null) {
+            sum5 = sum5.add(price);
+            validCount5++;
+          }
         }
-        ma5 = sum5.divide(BigDecimal.valueOf(5), 2, RoundingMode.HALF_UP);
+        if (validCount5 > 0) {
+          ma5 = sum5.divide(BigDecimal.valueOf(validCount5), 2, RoundingMode.HALF_UP);
+        }
       }
 
       BigDecimal ma20 = null;
       if (i >= 19) {
         BigDecimal sum20 = BigDecimal.ZERO;
+        int validCount20 = 0;
         for (int j = i - 19; j <= i; j++) {
-          sum20 = sum20.add(fetchedData.get(j).getClosingPrice());
+          BigDecimal price = fetchedData.get(j).getClosingPrice();
+          if (price != null) {
+            sum20 = sum20.add(price);
+            validCount20++;
+          }
         }
-        ma20 = sum20.divide(BigDecimal.valueOf(20), 2, RoundingMode.HALF_UP);
+        if (validCount20 > 0) {
+          ma20 = sum20.divide(BigDecimal.valueOf(validCount20), 2, RoundingMode.HALF_UP);
+        }
       }
 
       if (!currentDate.isBefore(startDate)) {
@@ -321,10 +335,9 @@ public class IndexDataService {
     IndexData indexData =
         indexDataRepository
             .findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("해당 지수 데이터가 없습니다. id=" + id));
+            .orElseThrow(() -> new EntityNotFoundException("수정할 지수 데이터를 찾을 수 없습니다. id=" + id));
 
     indexData.update(
-        request.sourceType(),
         request.marketPrice(),
         request.closingPrice(),
         request.highPrice(),
@@ -335,24 +348,74 @@ public class IndexDataService {
         request.tradingPrice(),
         request.marketTotalAmount());
     return indexDataMapper.toResponse(indexData);
-
   }
+
   @Transactional
   public IndexDataResponse create(IndexDataCreateRequest request) {
-    IndexInfo indexInfo = indexInfoRepository.findById(request.indexInfoId())
-            .orElseThrow(() -> new EntityNotFoundException("해당 지수 정보를 찾을 수 없습니다. id=" + request.indexInfoId()));
+    IndexInfo indexInfo =
+        indexInfoRepository
+            .findById(request.indexInfoId())
+            .orElseThrow(
+                () ->
+                    new EntityNotFoundException(
+                        "해당 지수 정보를 찾을 수 없습니다. id=" + request.indexInfoId()));
 
-    if (indexDataRepository.existsByIndexInfo_IdAndBaseDate(request.indexInfoId(), request.baseDate())) {
+    if (indexDataRepository.existsByIndexInfo_IdAndBaseDate(
+        request.indexInfoId(), request.baseDate())) {
       throw new IllegalArgumentException("해당 날짜의 데이터가 이미 존재합니다.");
     }
 
-    IndexData indexData = indexDataMapper.toEntity(request, indexInfo);
+    IndexData indexData = indexDataMapper.toIndexData(request, indexInfo);
     IndexData savedData = indexDataRepository.save(indexData);
 
     return indexDataMapper.toResponse(savedData);
   }
 
+  @Transactional
+  public void delete(Long id) {
+    IndexData indexData =
+        indexDataRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("삭제할 지수 데이터를 찾을 수 없습니다. ID: " + id));
 
+    indexDataRepository.delete(indexData);
+  }
 
+  public void exportToCSV(IndexDataExportCSVRequest request, Writer writer) {
+    try {
+      // 파일을 UTF-8로 인코딩 하라는 의미
+      writer.write("\uFEFF");
 
+      writer.write("기준일자,시가,종가,고가,저가,전일대비등락,등락률,거래량,거래대금,시가총액\n");
+
+      List<IndexData> indexDataList = indexDataRepository.findAllForExport(request);
+
+      // 데이터가 없을 경우 다운로드를 못하도록 방어
+      if (indexDataList.isEmpty()) {
+        throw new FileDownloadException("조건에 맞는 다운로드 데이터가 존재하지 않습니다.");
+      }
+
+      for (IndexData data : indexDataList) {
+        StringBuilder row = new StringBuilder();
+
+        row.append(data.getBaseDate() != null ? data.getBaseDate() : "").append(",");
+        row.append(data.getMarketPrice() != null ? data.getMarketPrice().toPlainString() : "").append(",");
+        row.append(data.getClosingPrice() != null ? data.getClosingPrice().toPlainString() : "").append(",");
+        row.append(data.getHighPrice() != null ? data.getHighPrice().toPlainString() : "").append(",");
+        row.append(data.getLowPrice() != null ? data.getLowPrice().toPlainString() : "").append(",");
+        row.append(data.getVersus() != null ? data.getVersus().toPlainString() : "").append(",");
+        row.append(data.getFluctuationRate() != null ? data.getFluctuationRate().toPlainString() : "").append(",");
+        row.append(data.getTradingQuantity() != null ? data.getTradingQuantity() : "").append(",");
+        row.append(data.getTradingPrice() != null ? data.getTradingPrice() : "").append(",");
+        row.append(data.getMarketTotalAmount() != null ? data.getMarketTotalAmount() : "");
+
+        row.append("\n");
+
+        writer.write(row.toString());
+      }
+      writer.flush();
+    } catch (IOException e) {
+      throw new FileDownloadException("다운로드에 실패하였습니다.", e);
+    }
+  }
 }

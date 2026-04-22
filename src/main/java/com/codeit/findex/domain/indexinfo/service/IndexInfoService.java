@@ -99,6 +99,10 @@ public class IndexInfoService {
     return indexInfoMapper.toIndexInfoResponse(indexInfo);
   }
 
+  public List<IndexInfoSummaryResponse> findAllIndexInfoSummaries() {
+    return indexInfoRepository.findAllSummaries();
+  }
+
   @Transactional
   public IndexInfoResponse updateIndexInfo(Long id, IndexInfoUpdateRequest request) {
     IndexInfo indexInfo =

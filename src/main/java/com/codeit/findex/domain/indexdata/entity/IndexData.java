@@ -116,6 +116,30 @@ public class IndexData {
   }
 
   public void update(
+      BigDecimal marketPrice,
+      BigDecimal closingPrice,
+      BigDecimal highPrice,
+      BigDecimal lowPrice,
+      BigDecimal versus,
+      BigDecimal fluctuationRate,
+      Long tradingQuantity,
+      Long tradingPrice,
+      Long marketTotalAmount
+  ) {
+    update(
+        this.sourceType,
+        marketPrice,
+        closingPrice,
+        highPrice,
+        lowPrice,
+        versus,
+        fluctuationRate,
+        tradingQuantity,
+        tradingPrice,
+        marketTotalAmount);
+  }
+
+  public void update(
       SourceType sourceType,
       BigDecimal marketPrice,
       BigDecimal closingPrice,
@@ -127,15 +151,15 @@ public class IndexData {
       Long tradingPrice,
       Long marketTotalAmount
   ) {
-      this.sourceType = sourceType;
-      this.marketPrice = marketPrice;
-      this.closingPrice = closingPrice;
-      this.highPrice = highPrice;
-      this.lowPrice = lowPrice;
-      this.versus = versus;
-      this.fluctuationRate = fluctuationRate;
-      this.tradingQuantity = tradingQuantity;
-      this.tradingPrice = tradingPrice;
-      this.marketTotalAmount = marketTotalAmount;
+    this.sourceType = sourceType;
+    this.marketPrice = marketPrice;
+    this.closingPrice = closingPrice;
+    this.highPrice = highPrice;
+    this.lowPrice = lowPrice;
+    this.versus = versus;
+    this.fluctuationRate = fluctuationRate;
+    this.tradingQuantity = tradingQuantity;
+    this.tradingPrice = tradingPrice;
+    this.marketTotalAmount = marketTotalAmount;
   }
 }
