@@ -1,6 +1,7 @@
 package com.codeit.findex.domain.indexdata.repository;
 
 import com.codeit.findex.domain.indexdata.dto.IndexDataSearchCondition;
+import com.codeit.findex.domain.indexdata.dto.request.IndexDataExportCSVRequest;
 import com.codeit.findex.domain.indexdata.entity.IndexData;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
@@ -28,7 +29,9 @@ public class IndexDataRepositoryImpl implements IndexDataRepositoryCustom {
             eqIndexInfoId(condition.indexInfoId()),
             betweenDates(condition.startDate(), condition.endDate()),
             getCursorCondition(condition))
-        .orderBy(createOrderSpecifier(condition), indexData.id.asc())
+        .orderBy(
+            createOrderSpecifier(condition.sortField(), condition.getSortDirection()),
+            indexData.id.asc())
         .limit(condition.getSize() + 1)
         .fetch();
   }
@@ -44,6 +47,18 @@ public class IndexDataRepositoryImpl implements IndexDataRepositoryCustom {
                 betweenDates(condition.startDate(), condition.endDate()))
             .fetchOne();
     return count != null ? count : 0L;
+  }
+
+  @Override
+  public List<IndexData> findAllForExport(IndexDataExportCSVRequest request) {
+    return queryFactory
+        .selectFrom(indexData)
+        .where(
+            eqIndexInfoId(request.indexInfoId()),
+            betweenDates(request.startDate(), request.endDate()))
+        .orderBy(
+            createOrderSpecifier(request.sortField(), request.sortDirection()), indexData.id.asc())
+        .fetch();
   }
 
   private BooleanExpression eqIndexInfoId(Long indexInfoId) {
@@ -143,11 +158,11 @@ public class IndexDataRepositoryImpl implements IndexDataRepositoryCustom {
         : path.lt(cursorValue).or(path.eq(cursorValue).and(indexData.id.gt(idAfter)));
   }
 
-  // 정렬 도우미
-  private OrderSpecifier<?> createOrderSpecifier(IndexDataSearchCondition condition) {
-    Order direction = condition.getSortDirection().equals("asc") ? Order.ASC : Order.DESC;
+  // 정렬 도우미 (목록 조회 & CSV 공통 사용)
+  private OrderSpecifier<?> createOrderSpecifier(String sortField, String sortDirection) {
+    Order direction = sortDirection.equalsIgnoreCase("asc") ? Order.ASC : Order.DESC;
 
-    return switch (condition.getSortField()) {
+    return switch (sortField) {
       case "marketPrice" -> new OrderSpecifier<>(direction, indexData.marketPrice);
       case "closingPrice" -> new OrderSpecifier<>(direction, indexData.closingPrice);
       case "highPrice" -> new OrderSpecifier<>(direction, indexData.highPrice);
