@@ -4,6 +4,7 @@ import com.codeit.findex.domain.common.enums.PerformancePeriodType;
 import com.codeit.findex.domain.indexdata.dto.IndexDataFavoriteResponse;
 import com.codeit.findex.domain.indexdata.dto.IndexDataSearchCondition;
 import com.codeit.findex.domain.indexdata.dto.request.IndexChartRequest;
+import com.codeit.findex.domain.indexdata.dto.request.IndexDataExportCSVRequest;
 import com.codeit.findex.domain.indexdata.dto.request.IndexDataUpdateRequest;
 import com.codeit.findex.domain.indexdata.dto.request.IndexPerformanceRankRequest;
 import com.codeit.findex.domain.indexdata.dto.response.IndexChartResponse;
@@ -11,15 +12,20 @@ import com.codeit.findex.domain.indexdata.dto.response.IndexDataResponse;
 import com.codeit.findex.domain.indexdata.dto.response.RankedIndexPerformanceResponse;
 import com.codeit.findex.domain.indexdata.service.IndexDataService;
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoCursorResponse;
+import com.codeit.findex.global.error.exception.FileDownloadException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.codeit.findex.domain.indexdata.dto.request.IndexDataCreateRequest;
@@ -94,31 +100,45 @@ public class IndexDataController {
     return ResponseEntity.ok(indexDataService.getChart(id, request.periodType()));
   }
 
-
-
-  @Operation(
-          summary = "지수 데이터 등록",
-          description = "새로운 지수 데이터를 등록합니다."
-  )
+  @Operation(summary = "지수 데이터 등록", description = "새로운 지수 데이터를 등록합니다.")
   @PostMapping
   public ResponseEntity<IndexDataResponse> create(
-          @Valid @RequestBody IndexDataCreateRequest request
-  ) {
+      @Valid @RequestBody IndexDataCreateRequest request) {
     IndexDataResponse response = indexDataService.create(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
-  @Operation(
-          summary = "지수 데이터 삭제",
-          description = "특정 지수 데이터를 삭제합니다."
-  )
+  @Operation(summary = "지수 데이터 삭제", description = "특정 지수 데이터를 삭제합니다.")
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> delete(
-          @Parameter(description = "지수 데이터 ID") @PathVariable Long id
-  ) {
+  public ResponseEntity<Void> delete(@Parameter(description = "지수 데이터 ID") @PathVariable Long id) {
     indexDataService.delete(id);
     return ResponseEntity.noContent().build();
   }
 
+  @Operation(
+      summary = "지수 데이터 CSV export",
+      description = "지수 데이터를 CSV 파일로 export합니다.",
+      operationId = "downloadIndexData")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "CSV 파일 생성 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청 (유효하지 않은 필터 값 등)"),
+        @ApiResponse(responseCode = "500", description = "서버 오류")
+      })
+  @GetMapping("/export/csv")
+  public void downloadIndexData(
+      @Valid @ModelAttribute IndexDataExportCSVRequest request, HttpServletResponse response) {
+    String fileName = "index-data-" + LocalDate.now() + ".csv";
 
+    // csv 파일임을 알리고 다운로드 팝업을 띄워서 파일로 저장하라는 의미
+    response.setContentType("text/csv; charset=UTF-8");
+    response.setHeader(
+        HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"");
+
+    try {
+      indexDataService.exportToCSV(request, response.getWriter());
+    } catch (IOException e) {
+      throw new FileDownloadException("다운로드에 실패하였습니다.", e);
+    }
+  }
 }

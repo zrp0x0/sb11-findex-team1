@@ -4,6 +4,7 @@ import com.codeit.findex.domain.common.enums.PerformancePeriodType;
 import com.codeit.findex.domain.indexdata.dto.IndexDataFavoriteResponse;
 import com.codeit.findex.domain.indexdata.dto.IndexDataMapper;
 import com.codeit.findex.domain.indexdata.dto.IndexDataSearchCondition;
+import com.codeit.findex.domain.indexdata.dto.request.IndexDataExportCSVRequest;
 import com.codeit.findex.domain.indexdata.dto.request.IndexDataUpdateRequest;
 import com.codeit.findex.domain.indexdata.dto.request.IndexPerformanceRankRequest;
 import com.codeit.findex.domain.indexdata.dto.request.PeriodType;
@@ -18,6 +19,9 @@ import com.codeit.findex.domain.indexdata.repository.IndexDataRepository;
 import com.codeit.findex.domain.indexinfo.dto.IndexInfoCursorResponse;
 import com.codeit.findex.domain.indexinfo.entity.IndexInfo;
 import com.codeit.findex.domain.indexinfo.repository.IndexInfoRepository;
+import com.codeit.findex.global.error.exception.FileDownloadException;
+import java.io.IOException;
+import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -375,5 +379,43 @@ public class IndexDataService {
             .orElseThrow(() -> new EntityNotFoundException("삭제할 지수 데이터를 찾을 수 없습니다. ID: " + id));
 
     indexDataRepository.delete(indexData);
+  }
+
+  public void exportToCSV(IndexDataExportCSVRequest request, Writer writer) {
+    try {
+      // 파일을 UTF-8로 인코딩 하라는 의미
+      writer.write("\uFEFF");
+
+      writer.write("기준일자,시가,종가,고가,저가,전일대비등락,등락률,거래량,거래대금,시가총액\n");
+
+      List<IndexData> indexDataList = indexDataRepository.findAllForExport(request);
+
+      // 데이터가 없을 경우 다운로드를 못하도록 방어
+      if (indexDataList.isEmpty()) {
+        throw new FileDownloadException("조건에 맞는 다운로드 데이터가 존재하지 않습니다.");
+      }
+
+      for (IndexData data : indexDataList) {
+        StringBuilder row = new StringBuilder();
+
+        row.append(data.getBaseDate() != null ? data.getBaseDate() : "").append(",");
+        row.append(data.getMarketPrice() != null ? data.getMarketPrice().toPlainString() : "").append(",");
+        row.append(data.getClosingPrice() != null ? data.getClosingPrice().toPlainString() : "").append(",");
+        row.append(data.getHighPrice() != null ? data.getHighPrice().toPlainString() : "").append(",");
+        row.append(data.getLowPrice() != null ? data.getLowPrice().toPlainString() : "").append(",");
+        row.append(data.getVersus() != null ? data.getVersus().toPlainString() : "").append(",");
+        row.append(data.getFluctuationRate() != null ? data.getFluctuationRate().toPlainString() : "").append(",");
+        row.append(data.getTradingQuantity() != null ? data.getTradingQuantity() : "").append(",");
+        row.append(data.getTradingPrice() != null ? data.getTradingPrice() : "").append(",");
+        row.append(data.getMarketTotalAmount() != null ? data.getMarketTotalAmount() : "");
+
+        row.append("\n");
+
+        writer.write(row.toString());
+      }
+      writer.flush();
+    } catch (IOException e) {
+      throw new FileDownloadException("다운로드에 실패하였습니다.", e);
+    }
   }
 }
