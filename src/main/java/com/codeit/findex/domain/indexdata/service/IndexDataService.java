@@ -320,6 +320,11 @@ public class IndexDataService {
         }
       }
     }
+
+    java.util.Collections.reverse(dataPoints);
+    java.util.Collections.reverse(ma5DataPoints);
+    java.util.Collections.reverse(ma20DataPoints);
+
     return new IndexChartResponse(
         indexInfo.getId(),
         indexInfo.getIndexClassification(),
