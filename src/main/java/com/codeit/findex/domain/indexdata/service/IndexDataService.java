@@ -38,8 +38,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class IndexDataService {
 
-  private static final int DEFAULT_RANK_LIMIT = 10;
-
   private final IndexDataRepository indexDataRepository;
   private final IndexInfoRepository indexInfoRepository;
   private final IndexDataMapper indexDataMapper;
@@ -185,9 +183,6 @@ public class IndexDataService {
   }
 
   private LocalDate getRankTargetDate(LocalDate currentDate, UnitPeriodType periodType) {
-    if (periodType == null) {
-      throw new IllegalArgumentException("기간 유형은 필수입니다.");
-    }
     return switch (periodType) {
       case DAILY -> currentDate.minusDays(1);
       case WEEKLY -> currentDate.minusWeeks(1);
@@ -242,9 +237,6 @@ public class IndexDataService {
   }
 
   private int resolveRankLimit(Integer limit) {
-    if (limit == null) {
-      return DEFAULT_RANK_LIMIT;
-    }
     if (limit < 1) {
       throw new IllegalArgumentException("랭킹 개수는 1 이상이어야 합니다.");
     }
@@ -257,7 +249,11 @@ public class IndexDataService {
             .findById(indexInfoId)
             .orElseThrow(() -> new IllegalArgumentException("해당 지수 정보가 없습니다. id=" + indexInfoId));
 
-    LocalDate endDate = LocalDate.now();
+    LocalDate endDate = indexDataRepository
+        .findFirstByIndexInfoIdAndBaseDateLessThanEqualOrderByBaseDateDesc(indexInfoId, LocalDate.now())
+        .map(IndexData::getBaseDate)
+        .orElseGet(LocalDate::now);
+
     LocalDate startDate =
         switch (periodType) {
           case MONTHLY -> endDate.minusMonths(1);
@@ -265,7 +261,7 @@ public class IndexDataService {
           case YEARLY -> endDate.minusYears(1);
         };
 
-    LocalDate fetchStartDate = startDate.minusDays(40);
+    LocalDate fetchStartDate = startDate.minusDays(60);
     List<IndexData> fetchedData =
         indexDataRepository.findByIndexInfoIdAndBaseDateBetweenOrderByBaseDateAsc(
             indexInfoId, fetchStartDate, endDate);
@@ -281,19 +277,33 @@ public class IndexDataService {
       BigDecimal ma5 = null;
       if (i >= 4) {
         BigDecimal sum5 = BigDecimal.ZERO;
+        int validCount5 = 0;
         for (int j = i - 4; j <= i; j++) {
-          sum5 = sum5.add(fetchedData.get(j).getClosingPrice());
+          BigDecimal price = fetchedData.get(j).getClosingPrice();
+          if (price != null) {
+            sum5 = sum5.add(price);
+            validCount5++;
+          }
         }
-        ma5 = sum5.divide(BigDecimal.valueOf(5), 2, RoundingMode.HALF_UP);
+        if (validCount5 > 0) {
+          ma5 = sum5.divide(BigDecimal.valueOf(validCount5), 2, RoundingMode.HALF_UP);
+        }
       }
 
       BigDecimal ma20 = null;
       if (i >= 19) {
         BigDecimal sum20 = BigDecimal.ZERO;
+        int validCount20 = 0;
         for (int j = i - 19; j <= i; j++) {
-          sum20 = sum20.add(fetchedData.get(j).getClosingPrice());
+          BigDecimal price = fetchedData.get(j).getClosingPrice();
+          if (price != null) {
+            sum20 = sum20.add(price);
+            validCount20++;
+          }
         }
-        ma20 = sum20.divide(BigDecimal.valueOf(20), 2, RoundingMode.HALF_UP);
+        if (validCount20 > 0) {
+          ma20 = sum20.divide(BigDecimal.valueOf(validCount20), 2, RoundingMode.HALF_UP);
+        }
       }
 
       if (!currentDate.isBefore(startDate)) {
@@ -321,10 +331,9 @@ public class IndexDataService {
     IndexData indexData =
         indexDataRepository
             .findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("해당 지수 데이터가 없습니다. id=" + id));
+            .orElseThrow(() -> new EntityNotFoundException("수정할 지수 데이터를 찾을 수 없습니다. id=" + id));
 
     indexData.update(
-        request.sourceType(),
         request.marketPrice(),
         request.closingPrice(),
         request.highPrice(),
