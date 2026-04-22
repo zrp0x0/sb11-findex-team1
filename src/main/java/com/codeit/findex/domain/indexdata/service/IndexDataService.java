@@ -207,8 +207,16 @@ public class IndexDataService {
     Optional<IndexData> compareDataOptional =
         indexDataRepository.findFirstByIndexInfoIdAndBaseDateLessThanEqualOrderByBaseDateDesc(
             indexInfo.getId(), targetDate);
-    if (compareDataOptional.isEmpty()) {
-      return Optional.empty();
+    if (compareDataOptional.isEmpty()) { // currentData =>
+      return Optional.of(
+              new IndexPerformanceResponse(
+                      indexInfo.getId(),
+                      indexInfo.getIndexClassification(),
+                      indexInfo.getIndexName(),
+                      null,
+                      null,
+                      currentData.getClosingPrice(),
+                      currentData.getClosingPrice()));
     }
 
     IndexData compareData = compareDataOptional.get();
