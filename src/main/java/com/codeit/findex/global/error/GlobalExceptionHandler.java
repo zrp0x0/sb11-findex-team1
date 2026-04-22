@@ -1,5 +1,6 @@
 package com.codeit.findex.global.error;
 
+import com.codeit.findex.global.error.exception.FileDownloadException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -44,10 +45,12 @@ public class GlobalExceptionHandler {
         e.getBindingResult().getFieldErrors().stream()
             .findFirst() // field Errors 먼저 확인
             .map(error -> error.getField() + ": " + error.getDefaultMessage())
-            .orElseGet(() -> e.getBindingResult().getGlobalErrors().stream()
-                .findFirst() // 없다면, globalErrors 확인
-                .map(error -> error.getDefaultMessage())
-                .orElse("요청값이 올바르지 않습니다.")); // 둘 다 없다면, 기본 문구 사용
+            .orElseGet(
+                () ->
+                    e.getBindingResult().getGlobalErrors().stream()
+                        .findFirst() // 없다면, globalErrors 확인
+                        .map(error -> error.getDefaultMessage())
+                        .orElse("요청값이 올바르지 않습니다.")); // 둘 다 없다면, 기본 문구 사용
 
     ErrorResponse response =
         ErrorResponse.builder()
@@ -76,6 +79,21 @@ public class GlobalExceptionHandler {
             .build();
 
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+  }
+
+  // 파일 다운로드 전용 커스텀 예외 생성
+  @ExceptionHandler(FileDownloadException.class)
+  public ResponseEntity<ErrorResponse> handlerFileDownloadException(FileDownloadException e) {
+    log.error("CSV 다운로드 실패: ", e);
+
+    ErrorResponse response =
+        ErrorResponse.builder()
+            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+            .message("파일 다운로드 중 오류가 발생했습니다.")
+            .details(e.getMessage())
+            .build();
+
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
   }
 
   // 500 에러
