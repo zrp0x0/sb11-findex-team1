@@ -18,7 +18,7 @@ spring:
   jpa:
     hibernate:
       # 운영 환경에서는 update 대신 validate나 none을 사용하도록 환경변수화
-      ddl-auto: ${JPA_DDL_AUTO:update}
+      ddl-auto: ${JPA_DDL_AUTO:validate}
     show-sql: true
     properties:
       hibernate:
