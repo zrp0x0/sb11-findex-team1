@@ -1,13 +1,13 @@
 spring:
   application:
-    name: P0_Findex_Test
+    name: P0_Findex
 
-  # H2 데이터베이스 설정 (로컬 개발 환경)
+  # 데이터베이스 설정 (환경변수가 없으면 로컬 H2 메모리 DB 사용)
   datasource:
-    driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:findexdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
-    username: sa
-    password:
+    driver-class-name: ${DB_DRIVER:org.h2.Driver}
+    url: ${DB_URL:jdbc:h2:mem:findexdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
 
   h2:
     console:
@@ -17,8 +17,23 @@ spring:
   # JPA 설정
   jpa:
     hibernate:
-      ddl-auto: update
+      # 운영 환경에서는 update 대신 validate나 none을 사용하도록 환경변수화
+      ddl-auto: ${JPA_DDL_AUTO:update}
     show-sql: true
     properties:
       hibernate:
         format_sql: true
+
+findex:
+  sync-job:
+    auto-sync:
+      # 매일 오전 6시 0분 0초에 실행
+      cron: "0 0 6 * * *"
+
+# OPEN API url, key, num-of-rows
+open-api:
+  stock-index:
+    base-url: https://apis.data.go.kr/1160100/service/GetMarketIndexInfoService/getStockMarketIndex
+    # 서비스 키는 깃허브 노출 방지를 위해 무조건 환경변수로 주입받도록 설정
+    service-key: ${OPEN_API_KEY}
+    num-of-rows: 100
