@@ -76,6 +76,10 @@ src/main/java/com/codeit/findex
 
 ## 구현 홈페이지
 - https://sb11-findex-team1-production.up.railway.app/#/dashboard
+<img width="876" height="840" alt="image" src="https://github.com/user-attachments/assets/8c3038f4-0538-417b-a7e3-a611d0fa566a" />
+<img width="877" height="853" alt="image" src="https://github.com/user-attachments/assets/8b8e53b5-aa21-48d5-9479-579cf8b5afbe" />
+<img width="877" height="852" alt="image" src="https://github.com/user-attachments/assets/1008befb-b5bf-47e1-9060-50eb125ce737" />
+<img width="880" height="845" alt="image" src="https://github.com/user-attachments/assets/a4ce889c-ebb1-4d38-8494-3f1fffe0a5e9" />
 
 ---
 
