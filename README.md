@@ -4,12 +4,12 @@
 ## 팀원 구성
 | 이름 | Github |
 | :--- | :--- |
-| **신홍규** | zrp0x0@gmail.com |
-| **강성민** | |
-| **노정빈** | |
-| **성결** | |
-| **엄주혁** | |
-| **정수용** | |
+| **신홍규** | https://github.com/zrp0x0 |
+| **강성민** | https://github.com/seongmin0244 |
+| **노정빈** | https://github.com/vincent856 |
+| **성결** | https://github.com/ow00us |
+| **엄주혁** | https://github.com/eomoff |
+| **정수용** | https://github.com/tndyd123 |
 
 ---
 
