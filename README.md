@@ -151,14 +151,19 @@
 ```text
 src/main/java/com/codeit/findex
  ┣ 📂 domain
- ┃ ┣ 📂 indexinfo       # 지표 메타데이터 관리
- ┃ ┣ 📂 indexdata       # 지표별 상세 수치 및 분석
- ┃ ┣ 📂 syncjob         # API 동기화 작업 로그 및 클라이언트
- ┃ ┣ 📂 autosyncconfig  # 스케줄링 및 자동화 설정
- ┃ ┗ 📂 common          # 공통 Enum 및 상수
+ ┃ ┣ 📂 indexinfo               # 지표 메타데이터 관리
+ ┃ ┃ ┣ 📂 controller            # API 엔드포인트 (IndexInfoController 등)
+ ┃ ┃ ┣ 📂 service               # 비즈니스 로직 (IndexInfoService 등)
+ ┃ ┃ ┣ 📂 repository            # 데이터베이스 접근 (IndexInfoRepository 등)
+ ┃ ┃ ┣ 📂 entity                # JPA 엔티티 (IndexInfo 등)
+ ┃ ┃ ┗ 📂 dto                   # 데이터 전송 객체 (Request, Response 등)
+ ┃ ┣ 📂 indexdata               # 지표별 상세 수치 및 분석
+ ┃ ┣ 📂 syncjob                 # API 동기화 작업 로그 및 클라이언트
+ ┃ ┣ 📂 autosyncconfig          # 스케줄링 및 자동화 설정
+ ┃ ┗ 📂 common                  # 공통 Enum 및 상수
  ┣ 📂 global
- ┃ ┣ 📂 config          # Querydsl, OpenAPI, Scheduling 설정
- ┃ ┗ 📂 error           # 예외 처리 및 에러 응답 정의
+ ┃ ┣ 📂 config                  # Querydsl, OpenAPI, Scheduling 설정
+ ┃ ┗ 📂 error                   # 예외 처리 및 에러 응답 정의
  ┗ 📜 P0FindexApplication.java
 ```
 
